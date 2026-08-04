@@ -1,0 +1,391 @@
+/* ==========================================
+   QUALITY INVENTARIO
+   Login.css
+========================================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;
+}
+
+body{
+    background:#edf3fb;
+    min-height:100vh;
+}
+
+.login-page{
+    display:grid;
+    grid-template-columns:1fr 480px;
+    min-height:100vh;
+}
+
+/* =========================
+   PANEL IZQUIERDO
+========================= */
+
+.welcome-panel{
+    background:linear-gradient(135deg,#0056b3,#0b84ff);
+    color:white;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    padding:60px;
+}
+
+.company-logo{
+    width:180px;
+    margin-bottom:35px;
+}
+
+.welcome-panel h1{
+    font-size:42px;
+    font-weight:700;
+    letter-spacing:2px;
+}
+
+.welcome-panel h2{
+    margin-top:10px;
+    font-weight:400;
+    opacity:.95;
+}
+
+.welcome-panel p{
+    margin-top:30px;
+    max-width:520px;
+    line-height:1.8;
+    font-size:18px;
+    opacity:.9;
+}
+
+/* =========================
+   LOGIN
+========================= */
+
+.login-panel{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:40px;
+}
+
+.login-card{
+
+    width:100%;
+    max-width:420px;
+
+    background:#fff;
+
+    border-radius:18px;
+
+    padding:45px;
+
+    box-shadow:
+    0 10px 40px rgba(0,0,0,.10);
+
+}
+
+.login-card h3{
+
+    color:#0b5ed7;
+    text-align:center;
+    font-size:30px;
+
+}
+
+.login-text{
+
+    margin-top:10px;
+    margin-bottom:35px;
+
+    text-align:center;
+    color:#777;
+
+}
+
+/* =========================
+   INPUTS
+========================= */
+
+.input-group{
+
+    display:flex;
+    flex-direction:column;
+
+    margin-bottom:22px;
+
+}
+
+.input-group label{
+
+    margin-bottom:8px;
+
+    color:#444;
+    font-weight:600;
+
+}
+
+.input-group input{
+
+    height:50px;
+
+    border:1px solid #d8d8d8;
+
+    border-radius:10px;
+
+    padding:0 15px;
+
+    font-size:15px;
+
+    transition:.25s;
+
+}
+
+.input-group input:focus{
+
+    outline:none;
+
+    border-color:#0b5ed7;
+
+    box-shadow:0 0 0 4px rgba(11,94,215,.15);
+
+}
+
+.password-container{
+
+    display:flex;
+    align-items:center;
+
+    position:relative;
+
+}
+
+.password-container input{
+
+    width:100%;
+
+    padding-right:55px;
+
+}
+
+.toggle-password{
+
+    position:absolute;
+
+    right:12px;
+
+    background:none;
+
+    border:none;
+
+    cursor:pointer;
+
+    font-size:20px;
+
+}
+
+/* =========================
+   OPCIONES
+========================= */
+
+.options{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:30px;
+
+    font-size:14px;
+
+}
+
+.options a{
+
+    text-decoration:none;
+
+    color:#0b5ed7;
+
+}
+
+.options a:hover{
+
+    text-decoration:underline;
+
+}
+
+.remember{
+
+    display:flex;
+
+    gap:8px;
+
+    align-items:center;
+
+}
+
+/* =========================
+   BOTON
+========================= */
+
+.btn-login{
+
+    width:100%;
+
+    height:55px;
+
+    border:none;
+
+    border-radius:12px;
+
+    background:#0b5ed7;
+
+    color:white;
+
+    font-size:17px;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+.btn-login:hover{
+
+    background:#0849a8;
+
+    transform:translateY(-2px);
+
+}
+
+.btn-login:active{
+
+    transform:scale(.98);
+
+}
+
+/* =========================
+   LOADER
+========================= */
+
+.loader{
+
+    margin-top:25px;
+
+    text-align:center;
+
+}
+
+.spinner{
+
+    width:45px;
+    height:45px;
+
+    border:5px solid #d8d8d8;
+
+    border-top:5px solid #0b5ed7;
+
+    border-radius:50%;
+
+    margin:auto;
+
+    animation:spin .9s linear infinite;
+
+}
+
+@keyframes spin{
+
+    to{
+        transform:rotate(360deg);
+    }
+
+}
+
+.hidden{
+
+    display:none;
+
+}
+
+.message{
+
+    margin-top:20px;
+
+    padding:12px;
+
+    border-radius:8px;
+
+    text-align:center;
+
+    font-size:14px;
+
+}
+
+/* =========================
+   FOOTER
+========================= */
+
+footer{
+
+    margin-top:40px;
+
+    text-align:center;
+
+    color:#999;
+
+    font-size:13px;
+
+}
+
+footer span{
+
+    display:block;
+
+    margin-top:6px;
+
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media(max-width:900px){
+
+.login-page{
+
+grid-template-columns:1fr;
+
+}
+
+.welcome-panel{
+
+padding:50px 30px;
+
+}
+
+.login-panel{
+
+padding:30px;
+
+}
+
+.company-logo{
+
+width:130px;
+
+}
+
+.welcome-panel h1{
+
+font-size:34px;
+
+}
+
+}

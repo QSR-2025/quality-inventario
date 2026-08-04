@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Quality Inventario</title>
+
+<link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#0d6efd">
+
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+
+<link rel="stylesheet" href="css/home.css">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+</head>
+
+<body>
+
+    <main class="login-page">
+
+        <!-- Panel izquierdo -->
+        <section class="welcome-panel">
+
+            <img src="assets/logo.png" alt="Quality" class="company-logo">
+
+            <h1>QUALITY INVENTARIO</h1>
+
+            <h2>Sistemas y Reactivos</h2>
+
+            <p>
+                Consulta el inventario en tiempo real de productos,
+                reactivos y equipos desde cualquier dispositivo.
+            </p>
+
+        </section>
+
+        <!-- Panel derecho -->
+        <section class="login-panel">
+
+            <div class="login-card">
+
+                <h3>Iniciar sesión</h3>
+
+                <p class="login-text">
+                    Ingresa tus credenciales para continuar.
+                </p>
+
+                <form id="loginForm" autocomplete="off">
+
+                    <div class="input-group">
+
+                        <label for="usuario">
+                            Usuario
+                        </label>
+
+                        <input
+                            type="text"
+                            id="usuario"
+                            placeholder="Ingrese su usuario"
+                            required>
+
+                    </div>
+
+                    <div class="input-group">
+
+                        <label for="password">
+                            Contraseña
+                        </label>
+
+                        <div class="password-container">
+
+                            <input
+                                type="password"
+                                id="password"
+                                placeholder="Ingrese su contraseña"
+                                required>
+
+                            <button
+                                type="button"
+                                id="togglePassword"
+                                class="toggle-password"
+                                aria-label="Mostrar contraseña">
+
+                                👁
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="options">
+
+                        <label class="remember">
+
+                            <input
+                                type="checkbox"
+                                id="remember">
+
+                            Recordar sesión
+
+                        </label>
+
+                        <a href="#" id="forgotPassword">
+                            ¿Olvidó su contraseña?
+                        </a>
+
+                    </div>
+
+                    <button
+                        type="submit"
+                        id="btnLogin"
+                        class="btn-login">
+
+                        Iniciar sesión
+
+                    </button>
+
+                </form>
+
+                <!-- Loader -->
+
+                <div
+                    id="loader"
+                    class="loader hidden">
+
+                    <div class="spinner"></div>
+
+                    <p>Verificando credenciales...</p>
+
+                </div>
+
+                <!-- Mensaje -->
+
+                <div
+                    id="mensaje"
+                    class="message hidden">
+                </div>
+
+                <footer>
+
+                    <p>
+                        © 2026 Quality Sistemas y Reactivos
+                    </p>
+
+                    <span>
+                        Versión 1.0
+                    </span>
+
+                </footer>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- JavaScript -->
+    <script src="js/api.js"></script>
+<script src="js/home.js"></script>
+<script src="js/movimientos.js"></script>
+
+<script>
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js")
+            .then(() => console.log("Service Worker registrado"))
+            .catch(err => console.error(err));
+    });
+}
+</script>
+
+</body>

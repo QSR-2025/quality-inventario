@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Quality Inventario</title>
+
+
+<link rel="stylesheet" href="css/home.css">
+
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+
+<!-- ==========================
+     SIDEBAR
+========================== -->
+
+
+<aside class="sidebar">
+
+
+<div class="logo">
+
+
+<img src="assets/logo.png" alt="Quality">
+
+
+<h2>
+QUALITY
+</h2>
+
+
+<span>
+Inventario
+</span>
+
+
+</div>
+
+<nav>
+
+
+<a id="menuProductos">
+    <i class="fas fa-boxes-stacked"></i>
+    Productos
+</a>
+
+<a id="menuMovimientos">
+    <i class="fas fa-clock-rotate-left"></i>
+    Movimientos
+</a>
+
+<a>
+    <i class="fas fa-gear"></i>
+    Configuración
+</a>
+
+</nav>
+
+
+
+</aside>
+
+
+
+
+
+
+
+
+
+<!-- ==========================
+     CONTENIDO
+========================== -->
+
+
+<main class="content">
+
+
+
+
+
+<header>
+
+<div class="header-left">
+
+    <h1 id="tituloPagina">Productos</h1>
+
+    <p id="subtituloPagina">
+        Gestión de inventario y vencimientos
+    </p>
+
+</div>
+
+<div class="search">
+
+    <i class="fas fa-search"></i>
+
+    <input
+        id="buscador"
+        type="text"
+        placeholder="Buscar producto, SKU, lote, proveedor...">
+
+</div>
+
+<div class="user">
+
+    <div class="user-info">
+
+        <span>Bienvenido</span>
+
+        <strong id="nombreUsuario">Usuario</strong>
+
+    </div>
+
+    <button id="logout">
+
+        <i class="fas fa-right-from-bracket"></i>
+
+    </button>
+
+</div>
+
+</header>
+
+
+
+
+
+
+
+
+<!-- ==========================
+     TARJETAS DASHBOARD
+========================== -->
+
+
+<section class="cards" id="dashboardCards">
+
+    <div class="card" data-title="Productos">
+
+        <div class="card-header">
+            <i class="fas fa-boxes"></i>
+        </div>
+
+        <h1 id="totalProductos">0</h1>
+
+    </div>
+
+    <div class="card dashboard-filter"
+         data-filtro="vigente"
+         data-title="Lotes Vigentes">
+
+        <div class="card-header">
+            <i class="fas fa-circle-check"></i>
+        </div>
+
+        <h1 id="lotesVigentes">0</h1>
+
+    </div>
+
+    <div class="card dashboard-filter"
+         data-filtro="por_vencer"
+         data-title="Por Vencer">
+
+        <div class="card-header">
+            <i class="fas fa-calendar-days"></i>
+        </div>
+
+        <h1 id="lotesPorVencer">0</h1>
+
+    </div>
+
+    <div class="card dashboard-filter"
+         data-filtro="urgente"
+         data-title="Urgentes">
+
+        <div class="card-header">
+            <i class="fas fa-triangle-exclamation"></i>
+        </div>
+
+        <h1 id="lotesUrgentes">0</h1>
+
+    </div>
+
+    <div class="card dashboard-filter"
+         data-filtro="vencido"
+         data-title="Vencidos">
+
+        <div class="card-header">
+            <i class="fas fa-skull-crossbones"></i>
+        </div>
+
+        <h1 id="lotesVencidos">0</h1>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================
+     RESULTADOS
+========================== -->
+
+<!-- ==========================
+     MOVIMIENTOS
+========================== -->
+
+<section id="seccionMovimientos" class="results" style="display:none;">
+
+
+<div class="results-header">
+
+<h2>
+<i class="fas fa-clock-rotate-left"></i>
+Centro de Reportes
+</h2>
+
+</div>
+
+
+<div class="movimientos-toolbar">
+
+
+<label>
+Fecha:
+</label>
+
+<input 
+type="date"
+id="fechaMovimientos">
+
+<p id="mensajeReporte" class="mensaje-reporte">
+    Seleccione una fecha para visualizar las estadísticas y descargar el reporte del día.
+</p>
+
+</div>
+
+
+
+<!-- ==========================
+     RESUMEN MOVIMIENTOS
+========================== -->
+
+<div id="resumenMovimientos" class="resumen-movimientos">
+
+    <div class="card-resumen">
+
+        <h3>Entradas</h3>
+
+        <span id="totalEntradas">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Salidas</h3>
+
+        <span id="totalSalidas">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Total</h3>
+
+        <span id="totalMovimientos">0</span>
+
+    </div>
+    <div class="card-resumen">
+
+    <h3>Productos</h3>
+
+    <span id="totalProductosMovimiento">0</span>
+
+</div>
+
+</div>
+
+<!-- ==========================
+     GRÁFICAS
+========================== -->
+
+<div id="graficasMovimientos">
+
+    <div class="grafica-card">
+
+        <h3>Entradas vs Salidas</h3>
+
+        <canvas id="graficaEntradasSalidas"></canvas>
+
+    </div>
+
+    <div class="grafica-card">
+
+        <h3>Productos con más movimientos</h3>
+
+        <canvas id="graficaProductos"></canvas>
+
+    </div>
+
+
+</div>
+<div style="text-align:center;margin-top:30px;">
+
+   <button id="btnDescargarExcel">
+
+    <i class="fas fa-file-excel"></i>
+
+    Descargar reporte del día
+
+</button>
+</div>
+
+</section>
+<section id="seccionResultados" class="results">
+
+
+
+
+
+<div class="results-header">
+
+
+<h2>
+Resultados
+</h2>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- BREADCRUMB -->
+
+
+<div id="breadcrumb" class="breadcrumb">
+
+
+<button class="crumb-btn active">
+
+
+<i class="fas fa-house"></i>
+
+Inicio
+
+
+</button>
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- LISTADO PRODUCTOS -->
+
+
+<div id="productList">
+
+
+</div>
+
+
+
+
+
+
+</section>
+
+
+
+
+
+
+
+</main>
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<!-- ==========================
+     MODAL DETALLE PRODUCTO
+========================== -->
+
+
+<div id="modalProducto" class="modal">
+
+
+
+<div class="modal-content">
+
+
+
+<button 
+id="cerrarModal"
+class="cerrar">
+
+
+×
+
+</button>
+
+
+
+
+
+<h2 id="detalleNombre">
+
+Producto
+
+</h2>
+
+<div class="detalle-info">
+
+
+<p>
+
+<strong>
+SKU:
+</strong>
+
+<span id="detalleSKU">
+
+</span>
+
+
+</p>
+
+
+
+
+
+
+
+<p>
+
+<strong>
+Proveedor:
+</strong>
+
+
+<span id="detalleProveedor">
+
+</span>
+
+
+</p>
+
+
+
+
+
+
+
+
+<p>
+
+<strong>
+Categoría:
+</strong>
+
+
+<span id="detalleCategoria">
+
+</span>
+
+
+</p>
+
+
+
+
+
+
+
+
+<p>
+
+<strong>
+Stock:
+</strong>
+
+
+<span id="detalleStock">
+
+</span>
+
+
+</p>
+
+
+
+
+
+
+
+
+
+<p>
+<strong>
+Ubicación:
+</strong>
+
+<span id="detalleUbicacion"></span>
+
+</p>
+<div class="lotes-modal">
+
+<h3>
+LOTES
+</h3>
+
+
+<div id="detalleLotes">
+
+</div>
+
+
+</div>
+
+
+
+
+</div>
+
+
+
+
+
+</div>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+<!-- ==========================
+     SCRIPTS
+========================== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/home.js"></script>
+<script src="js/movimientos.js"></script>
+
+
+
+
+</body>
+
+
+</html>
