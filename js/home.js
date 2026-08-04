@@ -107,11 +107,16 @@ async function cargarResumenRapido() {
         const elMarcas = document.getElementById("marcas");
         if (elMarcas) elMarcas.textContent = resumen.marcas;
 
-    } catch (error) {
+     } catch (error) {
 
-        console.error(error);
+     console.error(error);
 
-    }
+     alert(
+        "Error cargando resumen:\n\n" +
+        error.message
+    );
+
+} 
 
 }
 
@@ -127,9 +132,11 @@ async function cargarInventarioCompleto() {
 
         const datos = await obtenerInventario();
 
+        console.log("Respuesta API:", datos);
+
         inventario = datos.productos || [];
 
-        console.log("Productos:", inventario.length);
+        console.log("Productos:", inventario);
 
         actualizarDashboard(datos);
 
@@ -137,9 +144,14 @@ async function cargarInventarioCompleto() {
 
     } catch (error) {
 
-        console.error(error);
+    console.error(error);
 
-    }
+    alert(
+        "Error cargando inventario:\n\n" +
+        error.message
+    );
+
+}
 
 }
 
