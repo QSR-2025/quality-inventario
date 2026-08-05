@@ -3,7 +3,7 @@
    Comunicación con Google Apps Script
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwhV9pXMVOXD1BVUoSFlhUaj_CGDwOswx5J2nTGaN-PCEzU1egEMubOmLqbYLkMZcM7/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxsTwd1nXyYnIzHFuZn5suqY-2oC-gZnQ9kaBi_te3KLMlpViCXcs5VQmNQL13NPdkZ/exec";
 
 /* ==========================================================
    DASHBOARD
