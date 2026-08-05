@@ -59,7 +59,7 @@ togglePassword.addEventListener("click", () => {
   LOGIN
 =========================================*/
 
-form.addEventListener("submit", (e) => {
+form.addEventListener("submit", async (e) => {
 
 
     e.preventDefault();
@@ -111,29 +111,55 @@ form.addEventListener("submit", (e) => {
 
 
 
-    // Simulación de conexión con Apps Script
+    try {
 
-    setTimeout(() => {
 
+        const respuesta = await fetch(
+            `${API_URL}?action=login&usuario=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`
+        );
+
+
+        if (!respuesta.ok) {
+
+            throw new Error(
+                "No fue posible conectar con el servidor."
+            );
+
+        }
+
+
+        const datos = await respuesta.json();
+
+
+        if (datos.error) {
+
+            throw new Error(
+                datos.mensaje || "El servidor rechazó la solicitud."
+            );
+
+        }
 
 
         finalizarCarga();
 
 
-
-        // USUARIO TEMPORAL
-
-        if (user === "admin" && pass === "1234") {
+        if (datos.success) {
 
 
+            localStorage.setItem("qualityUsuario", datos.usuario.usuario);
+            localStorage.setItem("qualityNombre", datos.usuario.nombre);
+            localStorage.setItem("qualityCargo", datos.usuario.cargo);
+            localStorage.setItem("qualityRol", datos.usuario.rol);
 
-            // Guardar usuario siempre
+            if (remember.checked) {
 
-            localStorage.setItem(
-                "qualityUsuario",
-                user
-            );
+                localStorage.setItem("qualityRecordar", "1");
 
+            } else {
+
+                localStorage.removeItem("qualityRecordar");
+
+            }
 
 
             mostrarMensaje(
@@ -141,24 +167,18 @@ form.addEventListener("submit", (e) => {
                 "#198754"
             );
 
-
-
             setTimeout(() => {
-
 
                 window.location.href = "home.html";
 
-
-            },1200);
-
+            }, 1000);
 
 
         } else {
 
 
-
             mostrarMensaje(
-                "Usuario o contraseña incorrectos.",
+                datos.mensaje,
                 "#dc3545"
             );
 
@@ -166,9 +186,22 @@ form.addEventListener("submit", (e) => {
         }
 
 
+    } catch (error) {
 
-    },1800);
 
+        finalizarCarga();
+
+
+        console.error(error);
+
+
+        mostrarMensaje(
+            error.message || "No fue posible conectar con el servidor.",
+            "#dc3545"
+        );
+
+
+    }
 
 
 });
@@ -182,12 +215,16 @@ form.addEventListener("submit", (e) => {
 function cargarSesion(){
 
 
+    const recordado = localStorage.getItem(
+        "qualityRecordar"
+    );
+
     const user = localStorage.getItem(
         "qualityUsuario"
     );
 
 
-    if(user){
+    if (recordado && user) {
 
 
         usuario.value = user;
