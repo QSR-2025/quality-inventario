@@ -113,7 +113,7 @@ form.addEventListener("submit", async (e) => {
 
     try {
 
-
+        console.log("API:", API_URL);
         const respuesta = await fetch(
             `${API_URL}?action=login&usuario=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`
         );
@@ -130,14 +130,17 @@ form.addEventListener("submit", async (e) => {
 
         const datos = await respuesta.json();
 
+        console.log(datos);
 
         if (datos.error) {
 
-            throw new Error(
-                datos.mensaje || "El servidor rechazó la solicitud."
-            );
+        throw new Error(
+        datos.mensaje || "El servidor rechazó la solicitud."
+        );
 
-        }
+}
+
+
 
 
         finalizarCarga();
