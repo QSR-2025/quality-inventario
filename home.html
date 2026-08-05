@@ -66,6 +66,10 @@ Inventario
     Movimientos
 </a>
 
+<a id="menuVencimientos">
+    <i class="fas fa-calendar-xmark"></i>
+    Vencimientos
+</a>
 <a>
     <i class="fas fa-gear"></i>
     Configuración
@@ -224,7 +228,6 @@ Inventario
 
 <section id="seccionMovimientos" class="results" style="display:none;">
 
-
 <div class="results-header">
 
 <h2>
@@ -292,7 +295,6 @@ id="fechaMovimientos">
 </div>
 
 </div>
-
 <!-- ==========================
      GRÁFICAS
 ========================== -->
@@ -315,20 +317,149 @@ id="fechaMovimientos">
 
     </div>
 
-
 </div>
+
 <div style="text-align:center;margin-top:30px;">
 
-   <button id="btnDescargarExcel">
+    <button id="btnDescargarExcel">
 
-    <i class="fas fa-file-excel"></i>
+        <i class="fas fa-file-excel"></i>
 
-    Descargar reporte del día
+        Descargar reporte del día
 
-</button>
+    </button>
+
+</div>
+</section>
+
+<!-- ==========================
+     VENCIMIENTOS
+========================== -->
+
+<section id="seccionVencimientos"
+class="results"
+style="display:none;">
+
+<div class="results-header">
+
+<h2>
+
+<i class="fas fa-calendar-xmark"></i>
+
+Reporte de Vencimientos
+
+</h2>
+
+</div>
+
+<div class="vencimientos-toolbar">
+
+    <div>
+
+        <label for="mesVencimientos">
+
+            Mes
+
+        </label>
+
+        <select id="mesVencimientos">
+
+            <option>Enero</option>
+
+            <option>Febrero</option>
+
+            <option>Marzo</option>
+
+            <option>Abril</option>
+
+            <option>Mayo</option>
+
+            <option>Junio</option>
+
+            <option>Julio</option>
+
+            <option>Agosto</option>
+
+            <option>Septiembre</option>
+
+            <option>Octubre</option>
+
+            <option>Noviembre</option>
+
+            <option>Diciembre</option>
+
+        </select>
+
+    </div>
+
+    <button id="btnPdfVencimientos">
+
+        <i class="fas fa-file-pdf"></i>
+
+        Descargar PDF
+
+    </button>
+
+</div>
+
+<div class="resumen-vencimientos">
+
+    <div class="card-resumen">
+
+        <h3>Productos</h3>
+
+        <span id="vProductos">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Lotes</h3>
+
+        <span id="vLotes">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Unidades</h3>
+
+        <span id="vUnidades">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Marcas</h3>
+
+        <span id="vMarcas">0</span>
+
+    </div>
+
+</div>
+
+<div class="grafica-card">
+
+    <h3>
+
+        Productos vencidos
+
+    </h3>
+
+    <canvas id="graficaVencimientos"></canvas>
+
+</div>
+
+<div id="tablaVencimientos">
+
 </div>
 
 </section>
+
+<!-- ==========================
+     RESULTADOS
+========================== -->
+
 <section id="seccionResultados" class="results">
 
 
@@ -603,6 +734,7 @@ LOTES
 <script src="js/api.js"></script>
 <script src="js/home.js"></script>
 <script src="js/movimientos.js"></script>
+<script src="js/vencimientos.js"></script>
 
 
 

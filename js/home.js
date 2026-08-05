@@ -330,6 +330,8 @@ function configurarMenu() {
 
     const menuProductos = document.getElementById("menuProductos");
     const menuMovimientos = document.getElementById("menuMovimientos");
+    const menuVencimientos = document.getElementById("menuVencimientos");
+    
 
     // Productos
     if (menuProductos) {
@@ -342,6 +344,7 @@ document.getElementById("subtituloPagina").textContent = "Gestión de inventario
 
             document.getElementById("seccionResultados").style.display = "block";
             document.getElementById("seccionMovimientos").style.display = "none";
+            document.getElementById("seccionVencimientos").style.display = "none";
 
             mostrarMarcas();
 
@@ -359,7 +362,16 @@ document.getElementById("subtituloPagina").textContent = "Gestión de inventario
         });
 
     }
+    // Vencimientos
+    if (menuVencimientos) {
 
+         menuVencimientos.addEventListener("click", () => {
+
+            mostrarVencimientos();
+
+        });
+
+}
 }
 
 
@@ -651,9 +663,12 @@ function mostrarDashboardCards(mostrar) {
     if (!dashboard) return;
 
     const movimientos = document.getElementById("seccionMovimientos");
+    const vencimientos = document.getElementById("seccionVencimientos");
 
-    // Si estamos en Movimientos, nunca mostrar las tarjetas
-    if (movimientos && movimientos.style.display === "block") {
+    if (
+        (movimientos && movimientos.style.display === "block") ||
+        (vencimientos && vencimientos.style.display === "block")
+    ) {
 
         dashboard.style.display = "none";
         return;
@@ -684,20 +699,21 @@ function configurarBuscador() {
         const enMovimientos =
             document.getElementById("seccionMovimientos").style.display === "block";
 
+        const enVencimientos =
+            document.getElementById("seccionVencimientos").style.display === "block";
+
         // Si el buscador quedó vacío...
         if (texto === "") {
 
-            // Si estoy en movimientos NO regresar al dashboard
-            if (enMovimientos) return;
+        if (enMovimientos || enVencimientos) return;
 
-            mostrarDashboardCards(true);
-            mostrarMarcas();
-            return;
-        }
+         mostrarDashboardCards(true);
+         mostrarMarcas();
+         return;
 
-        // Si estoy en movimientos todavía no existe buscador,
-        // simplemente no hacer nada.
-        if (enMovimientos) return;
+}
+
+         if (enMovimientos || enVencimientos) return;
 
         mostrarDashboardCards(false);
 
@@ -1023,10 +1039,6 @@ function configurarModal() {
 // CLICK EN TARJETAS DEL DASHBOARD
 // =====================================
 
-// =====================================
-// CLICK EN TARJETAS DEL DASHBOARD
-// =====================================
-
 document.querySelectorAll(".dashboard-filter")
 .forEach(card => {
 
@@ -1140,9 +1152,6 @@ ${textoEstadoLote(estado)}
 
 
 }
-// =====================================
-// MOSTRAR MOVIMIENTOS
-// =====================================
 
 // =====================================
 // MOSTRAR MOVIMIENTOS
@@ -1158,9 +1167,92 @@ document.getElementById("subtituloPagina").textContent = "Estadísticas y movimi
 
     // Ocultar resultados
     document.getElementById("seccionResultados").style.display = "none";
+    document.getElementById("seccionVencimientos").style.display = "none";
 
     // Mostrar movimientos
     document.getElementById("seccionMovimientos").style.display = "block";
+
+}
+// =====================================
+// MOSTRAR VENCIMIENTOS
+// =====================================
+
+async function mostrarVencimientos() {
+
+    document.getElementById("tituloPagina").textContent =
+        "Reporte de Vencimientos";
+
+    document.getElementById("subtituloPagina").textContent =
+        "Productos vencidos por mes";
+
+    desactivarBuscador();
+
+    mostrarDashboardCards(false);
+
+    document.getElementById("seccionResultados").style.display = "none";
+    document.getElementById("seccionMovimientos").style.display = "none";
+    document.getElementById("seccionVencimientos").style.display = "block";
+
+    // ==========================
+    // CARGAR MESES
+    // ==========================
+
+    const meses = await getMesesVencimientos();
+
+    const select = document.getElementById("mesVencimientos");
+
+    select.innerHTML = "";
+
+    meses.forEach(mes => {
+
+        select.innerHTML += `
+            <option value="${mes}">
+                ${mes}
+            </option>
+        `;
+
+    });
+
+    // Cargar automáticamente el primer mes
+
+    if (meses.length > 0) {
+
+        await cargarVencimientos(meses[0]);
+
+    }
+
+    // Cuando cambie el mes
+
+    select.onchange = async () => {
+
+        await cargarVencimientos(select.value);
+
+    };
+
+}
+
+
+// =====================================
+// CARGAR VENCIMIENTOS
+// =====================================
+
+async function cargarVencimientos(mes) {
+
+    const datos = await getVencimientos(mes);
+
+    document.getElementById("vProductos").textContent =
+        datos.resumen.productos || 0;
+
+    document.getElementById("vLotes").textContent =
+        datos.resumen.lotes || 0;
+
+    document.getElementById("vUnidades").textContent =
+        datos.resumen.unidades || 0;
+
+    document.getElementById("vMarcas").textContent =
+        datos.resumen.marcas || 0;
+
+    console.log("Vencimientos:", datos);
 
 }
 function activarBuscador() {

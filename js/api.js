@@ -127,3 +127,34 @@ async function obtenerResumenMovimientos(fecha = "") {
     return await respuesta.json();
 
 }
+// ==========================
+// VENCIMIENTOS
+// ==========================
+
+async function getMesesVencimientos() {
+
+    const res = await fetch(
+
+        API_URL + "?action=getMesesVencimientos"
+
+    );
+
+    return await res.json();
+
+}
+
+async function getVencimientos(mes) {
+
+    const res = await fetch(
+
+        API_URL +
+
+        "?action=getVencimientos&mes=" +
+
+        encodeURIComponent(mes)
+
+    );
+
+    return await res.json();
+
+}
