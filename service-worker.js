@@ -1,4 +1,4 @@
-const CACHE_NAME = "quality-inventario-v3";
+const CACHE_NAME = "quality-inventario-v4";
 
 const FILES = [
     "./",
@@ -74,32 +74,22 @@ self.addEventListener("fetch", event => {
 
     if (event.request.method !== "GET") return;
 
-    // HTML (navegación): red primero, caché solo como respaldo offline.
-    // Así cualquier edición futura de index.html/home.html se ve de
-    // inmediato en el próximo reload, sin depender de subir CACHE_NAME.
-    if (event.request.mode === "navigate") {
-
-        event.respondWith(
-            fetch(event.request)
-                .then(response => {
-                    const copia = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, copia));
-                    return response;
-                })
-                .catch(() => caches.match(event.request))
-        );
-
-        return;
-
-    }
-
-    // Resto de assets (css/js/imagenes): caché primero, red de respaldo.
     event.respondWith(
 
-        caches.match(event.request)
+        fetch(event.request)
             .then(response => {
 
-                return response || fetch(event.request);
+                const copia = response.clone();
+
+                caches.open(CACHE_NAME)
+                    .then(cache => cache.put(event.request, copia));
+
+                return response;
+
+            })
+            .catch(() => {
+
+                return caches.match(event.request);
 
             })
 
