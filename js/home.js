@@ -1229,8 +1229,186 @@ async function mostrarVencimientos() {
 
     };
 
+} // ← aquí termina mostrarVencimientos
+
+let datosVencimientos = null;
+let graficaVencimientos = null;
+
+function dibujarGraficaVencimientos(productos){
+
+    const conteo = {};
+
+productos
+    .filter(p =>
+        p.marca &&
+        p.marca.trim() !== "" &&
+        p.marca.toUpperCase() !== "MARCA"
+    )
+    .forEach(p => {
+
+        conteo[p.marca] = (conteo[p.marca] || 0) + 1;
+
+    });
+
+    const ordenados = Object.entries(conteo)
+    .sort((a, b) => b[1] - a[1]);
+
+const labels = ordenados.map(item => item[0]);
+
+const valores = ordenados.map(item => item[1]);
+
+    const ctx = document
+        .getElementById("graficaVencimientos")
+        .getContext("2d");
+
+    if(graficaVencimientos){
+
+        graficaVencimientos.destroy();
+
+    }
+
+    graficaVencimientos = new Chart(ctx, {
+
+    type: "bar",
+
+data: {
+
+    labels,
+
+    datasets: [{
+
+        label: "Productos vencidos",
+
+        data: valores,
+
+        borderRadius: 10,
+
+        borderSkipped: false,
+
+        barThickness: 34,
+
+        maxBarThickness: 40,
+
+hoverBackgroundColor: "#003F8A",
+
+backgroundColor: [
+    "#0F4C81",
+    "#1565C0",
+    "#1976D2",
+    "#1E88E5",
+    "#42A5F5",
+    "#64B5F6",
+    "#90CAF9",
+    "#BBDEFB"
+]
+
+    }]
+
+},
+
+    options: {
+
+    indexAxis: 'y',
+
+    responsive: true,
+
+    maintainAspectRatio: false,
+
+    scales: {
+
+        x: {
+
+            beginAtZero: true,
+
+            ticks: {
+
+                precision: 0,
+
+                color: "#5B6777"
+
+            },
+
+            grid: {
+
+                color: "#EEF2F7"
+
+            }
+
+        },
+
+        y: {
+
+            ticks: {
+
+                color: "#243B53",
+
+                font: {
+
+                    size: 15,
+
+                    weight: "600"
+
+                }
+
+            },
+
+            grid: {
+
+                display: false
+
+            }
+
+        }
+
+    },
+
+    plugins: {
+
+        legend: {
+
+            display: false
+
+        },
+
+        title: {
+
+            display: true,
+
+            text: "Top de productos vencidos por marca",
+
+            color: "#183153",
+
+            font: {
+
+                size: 22,
+
+                weight: "bold"
+
+            }
+
+        },
+
+        tooltip: {
+
+            callbacks: {
+
+                label(context) {
+
+                    return context.raw + " productos";
+
+                }
+
+            }
+
+        }
+
+    }
+
 }
 
+});
+
+}
 
 // =====================================
 // CARGAR VENCIMIENTOS
@@ -1254,6 +1432,11 @@ async function cargarVencimientos(mes) {
 
     console.log("Vencimientos:", datos);
 
+    // Dibujar gráfica
+dibujarGraficaVencimientos(datos.productos);
+
+// Llenar tabla
+llenarTablaVencimientos(datos.productos);
 }
 function activarBuscador() {
 
@@ -1295,6 +1478,45 @@ function configurarLogout() {
         localStorage.removeItem("qualityUsuario");
 
         window.location.href = "index.html";
+
+    });
+
+}
+function llenarTablaVencimientos(productos){
+
+    const tbody = document.querySelector("#tablaVencimientos tbody");
+
+    if(!tbody) return;
+
+    tbody.innerHTML = "";
+
+    productos.slice(1).forEach(producto=>{
+
+        const fila = document.createElement("tr");
+
+        fila.innerHTML = `
+
+            <tr>
+
+                <td>${producto.marca || "-"}</td>
+
+                <td>${producto.codigo || "-"}</td>
+
+                <td>${producto.producto || "-"}</td>
+
+                <td>${producto.lote || "-"}</td>
+
+                <td>${new Date(producto.fecha).toLocaleDateString("es-HN")}</td>
+
+                <td style="text-align:center">
+                    ${producto.cantidad || 0}
+                </td>
+
+            </tr>
+
+        `;
+
+        tbody.appendChild(fila);
 
     });
 

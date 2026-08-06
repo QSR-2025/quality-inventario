@@ -963,3 +963,100 @@ header{
     margin-top:30px;
 
 }
+/* ==========================
+   SOLO VENCIMIENTOS
+========================== */
+
+#seccionVencimientos .grafica-card{
+
+    height:520px;
+
+}
+
+#graficaVencimientos{
+
+    width:100% !important;
+    height:100% !important;
+
+}
+/* ==========================
+   TABLA VENCIMIENTOS
+========================== */
+
+.tabla-vencimientos{
+
+    margin-top:35px;
+    background:#fff;
+    border-radius:22px;
+    padding:25px;
+    box-shadow:0 12px 35px rgba(15,76,221,.08);
+
+}
+
+.tabla-vencimientos h3{
+
+    font-size:24px;
+    color:#243B53;
+    margin-bottom:20px;
+
+}
+
+.tabla-responsive{
+
+    overflow-x:auto;
+
+}
+
+#tablaVencimientos{
+
+    width:100%;
+    border-collapse:collapse;
+
+}
+
+#tablaVencimientos thead{
+
+    background:#0F4C81;
+
+}
+
+#tablaVencimientos thead th{
+
+    color:#fff;
+    padding:16px;
+    font-size:15px;
+    font-weight:600;
+    text-align:left;
+
+}
+
+#tablaVencimientos tbody td{
+
+    padding:10px 14px;
+    border-bottom:1px solid #EEF2F7;
+    color:#425466;
+    font-size:15px;
+
+}
+
+
+#tablaVencimientos tbody tr:nth-child(even){
+
+    background:#F8FAFD;
+
+}
+
+#tablaVencimientos tbody tr:hover{
+
+    background:#EAF4FF;
+    transition:.25s;
+
+}
+
+#tablaVencimientos tbody td:last-child{
+
+    text-align:center;
+    font-weight:bold;
+    color:#0F4C81;
+
+}
