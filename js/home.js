@@ -121,39 +121,292 @@ async function cargarResumenRapido() {
 }
 
 
-// ========================================
-// INVENTARIO
-// ========================================
-
-
 async function cargarInventarioCompleto() {
-
     try {
 
-        const datos = await obtenerInventario();
+        // ================================
+        // INVENTARIO TEGUS
+        // ================================
+        const datosTegus = await obtenerInventario();
 
-        console.log("Respuesta API:", datos);
+        const productosTegus = datosTegus?.productos || [];
 
-        inventario = datos.productos || [];
 
-        console.log("Productos:", inventario);
+        // ================================
+        // INVENTARIO SPS
+        // ================================
+        let productosSPS = [];
 
-        actualizarDashboard(datos);
+        try {
+
+            // El Apps Script ya tiene el endpoint
+            // getInventarioSPS()
+            const datosSPS = await obtenerInventarioSPS();
+
+            productosSPS = datosSPS?.productos || [];
+
+        } catch (errorSPS) {
+
+            console.warn(
+                "No se pudo cargar el inventario SPS:",
+                errorSPS
+            );
+
+            productosSPS = [];
+        }
+
+
+        // ================================
+        // MARCAR BODEGA
+        // ================================
+
+        const tegusConBodega = productosTegus.map(producto => ({
+
+            ...producto,
+
+            bodega: "Tegus"
+            
+        }));
+
+
+        const spsConBodega = productosSPS.map(producto => ({
+
+            ...producto,
+
+            bodega: "SPS"
+
+        }));
+
+
+        // ================================
+        // UNIR TEGUS + SPS
+        // ================================
+
+        const todosLosProductos = [
+
+            ...tegusConBodega,
+
+            ...spsConBodega
+
+        ];
+
+
+        // ================================
+        // AGRUPAR POR SKU
+        // ================================
+
+        const productosAgrupados = new Map();
+
+
+        todosLosProductos.forEach(producto => {
+
+            const sku = String(
+                producto.sku ||
+                producto.codigo ||
+                producto.code ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+            // Si no tiene SKU, no intentamos
+            // fusionarlo con otro producto.
+            if (!sku) {
+
+                inventario.push(producto);
+
+                return;
+
+            }
+
+
+            // ==================================
+            // PRODUCTO NUEVO
+            // ==================================
+
+            if (!productosAgrupados.has(sku)) {
+
+                productosAgrupados.set(
+
+                    sku,
+
+                    {
+
+                        ...producto,
+
+                        sku: sku,
+
+                        stockTotal: 0,
+
+                        lotes: []
+
+                    }
+
+                );
+
+            }
+
+
+            const productoFinal =
+                productosAgrupados.get(sku);
+
+
+            // ==================================
+            // SUMAR STOCK
+            // ==================================
+
+            const stockProducto = Number(
+                producto.stockTotal ??
+                producto.stock ??
+                producto.cantidad ??
+                0
+            );
+
+
+            productoFinal.stockTotal +=
+                isNaN(stockProducto)
+                    ? 0
+                    : stockProducto;
+
+
+            // ==================================
+            // COPIAR LOTES
+            // ==================================
+
+            if (
+                Array.isArray(producto.lotes) &&
+                producto.lotes.length
+            ) {
+
+                producto.lotes.forEach(lote => {
+
+                    productoFinal.lotes.push({
+
+                        ...lote,
+
+                        // IMPORTANTE:
+                        // cada lote conserva su bodega
+
+                        bodega:
+                            lote.bodega ||
+                            producto.bodega ||
+                            "Tegus"
+
+                    });
+
+                });
+
+            }
+
+            else {
+
+                // ==================================
+                // SI EL PRODUCTO NO VIENE CON LOTES
+                // ==================================
+
+                productoFinal.lotes.push({
+
+                    lote:
+                        producto.lote ||
+                        producto.numeroLote ||
+                        producto.codigoLote ||
+                        "—",
+
+                    stock: stockProducto,
+
+                    cantidad: stockProducto,
+
+                    vencimiento:
+                        producto.vencimiento ||
+                        producto.fechaVencimiento ||
+                        "Sin fecha",
+
+                    fechaVencimiento:
+                        producto.fechaVencimiento ||
+                        producto.vencimiento ||
+                        "Sin fecha",
+
+                    alerta:
+                        producto.alerta ||
+                        "",
+
+                    estado:
+                        producto.estado ||
+                        "Vigente",
+
+                    bodega:
+                        producto.bodega ||
+                        "Tegus"
+
+                });
+
+            }
+
+        });
+
+
+        // ==================================
+        // CONVERTIR MAP A ARRAY
+        // ==================================
+
+        inventario = Array.from(
+            productosAgrupados.values()
+        );
+
+
+        // ==================================
+        // LOG DE CONTROL
+        // ==================================
+
+        console.log(
+            "Productos Tegus:",
+            productosTegus.length
+        );
+
+        console.log(
+            "Productos SPS:",
+            productosSPS.length
+        );
+
+        console.log(
+            "Productos combinados:",
+            inventario.length
+        );
+
+
+        // ==================================
+        // DASHBOARD
+        // ==================================
+
+        actualizarDashboard({
+
+            ...datosTegus,
+
+            productos: inventario,
+
+            total: inventario.length
+
+        });
+
+
+        // ==================================
+        // MOSTRAR MARCAS
+        // ==================================
 
         mostrarMarcas();
 
+
     } catch (error) {
 
-    console.error(error);
+        console.error(
+            "Error cargando inventario:",
+            error
+        );
 
-    alert(
-        "Error cargando inventario:\n\n" +
-        error.message
-    );
-
+    }
 }
 
-}
 
 
 // ========================================
@@ -927,7 +1180,7 @@ function verDetalleProducto(producto) {
 
         if (producto.lotes && producto.lotes.length) {
 
-            producto.lotes.slice(0, 4).forEach((lote, index) => {
+            producto.lotes.forEach((lote, index) => {
 
                 const numeroLote = lote.numLote || "—";
 
@@ -936,6 +1189,12 @@ function verDetalleProducto(producto) {
                     : 0;
 
                 const fecha = lote.vencimiento || "Sin fecha";
+                const bodega = lote.bodega || producto.bodega || "Tegus";
+
+                    const ubicacionLote =
+                    lote.ubicacion ||
+                    producto.ubicacion ||
+                    "No asignada";
 
                 const dias = calcularDiasRestantes(fecha);
 
@@ -973,10 +1232,18 @@ function verDetalleProducto(producto) {
 
                     <div class="lote-footer">
 
+                        <span>🏢 ${bodega}</span>
+
+                        <span>📍 ${ubicacionLote}</span>
+
+                    </div>
+
+                    <div class="lote-footer">
+
                         <span>📅 ${fecha}</span>
 
                         <span class="estado-lote estado-${estado}">
-                            ${estadoLote}
+                       ${estadoLote}
                         </span>
 
                     </div>

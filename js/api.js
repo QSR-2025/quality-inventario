@@ -3,7 +3,7 @@
    Comunicación con Google Apps Script
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwM-w2fgiX19bVDKwXRhzkpLBcE02KzseqV0JVogvz9_RRuLuiNdjZr5bFL0O8rQSP7/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzmMCNJoWfG9zaULIUv7JjEtWy3MrFPbFAbhGKv3-v2G2PDF1CRd4oe0QTEd0H2xxCR/exec";
 
 /* ==========================================================
    DASHBOARD
@@ -35,6 +35,22 @@ async function obtenerInventario(forzar = false) {
 
     return await respuesta.json();
 
+}
+// ==========================================================
+// INVENTARIO BODEGA SPS
+// ==========================================================
+
+async function obtenerInventarioSPS() {
+
+    const url = `${API_URL}?action=getInventarioSPS`;
+
+    const respuesta = await fetch(url);
+
+    if (!respuesta.ok) {
+        throw new Error(`HTTP ${respuesta.status}`);
+    }
+
+    return await respuesta.json();
 }
 
 /* ==========================================================
