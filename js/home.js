@@ -17,7 +17,47 @@ let rutaActual = {
 
 };
 
+/* ==========================================================
+   ÍNDICES DE INVENTARIO
+   Evitan recorrer todo el inventario repetidamente
+========================================================== */
 
+let indiceMarcas = new Map();
+let indiceCategorias = new Map();
+
+function construirIndicesInventario() {
+
+    indiceMarcas.clear();
+    indiceCategorias.clear();
+
+    inventario.forEach(producto => {
+
+        const marca = producto.proveedor || "";
+        const categoria = producto.categoria || "";
+
+        if (marca) {
+
+            if (!indiceMarcas.has(marca)) {
+                indiceMarcas.set(marca, []);
+            }
+
+            indiceMarcas.get(marca).push(producto);
+        }
+
+        if (marca && categoria) {
+
+            const clave = `${marca}|||${categoria}`;
+
+            if (!indiceCategorias.has(clave)) {
+                indiceCategorias.set(clave, []);
+            }
+
+            indiceCategorias.get(clave).push(producto);
+        }
+
+    });
+
+}
 // ========================================
 // INICIO
 // ========================================
@@ -75,9 +115,10 @@ function cargarUsuario() {
 
 async function iniciar() {
 
-    await cargarResumenRapido();
-
-    await cargarInventarioCompleto();
+    await Promise.all([
+        cargarResumenRapido(),
+        cargarInventarioCompleto()
+    ]);
 
 }
 
@@ -106,6 +147,26 @@ async function cargarResumenRapido() {
 
         const elMarcas = document.getElementById("marcas");
         if (elMarcas) elMarcas.textContent = resumen.marcas;
+        
+        const elVigentes = document.getElementById("lotesVigentes");
+if (elVigentes) {
+    elVigentes.textContent = resumen.lotesVigentes ?? 0;
+}
+
+const elPorVencerLotes = document.getElementById("lotesPorVencer");
+if (elPorVencerLotes) {
+    elPorVencerLotes.textContent = resumen.lotesPorVencer ?? 0;
+}
+
+const elUrgentes = document.getElementById("lotesUrgentes");
+if (elUrgentes) {
+    elUrgentes.textContent = resumen.lotesUrgentes ?? 0;
+}
+
+const elVencidos = document.getElementById("lotesVencidos");
+if (elVencidos) {
+    elVencidos.textContent = resumen.lotesVencidos ?? 0;
+}
 
      } catch (error) {
 
@@ -121,79 +182,108 @@ async function cargarResumenRapido() {
 }
 
 
+// ========================================
+// INVENTARIO COMPLETO
+// TEGUS + SPS EN PARALELO
+// ========================================
+
 async function cargarInventarioCompleto() {
+
     try {
 
-        // ================================
+        // ========================================
+        // CARGAR TEGUS + SPS AL MISMO TIEMPO
+        // ========================================
+
+        const [resultadoTegus, resultadoSPS] =
+            await Promise.allSettled([
+                obtenerInventario(),
+                obtenerInventarioSPS()
+            ]);
+
+
+        // ========================================
         // INVENTARIO TEGUS
-        // ================================
-        const datosTegus = await obtenerInventario();
+        // ========================================
 
-        const productosTegus = datosTegus?.productos || [];
+        let datosTegus = null;
+        let productosTegus = [];
 
+        if (resultadoTegus.status === "fulfilled") {
 
-        // ================================
-        // INVENTARIO SPS
-        // ================================
-        let productosSPS = [];
+            datosTegus = resultadoTegus.value;
 
-        try {
+            productosTegus =
+                datosTegus?.productos || [];
 
-            // El Apps Script ya tiene el endpoint
-            // getInventarioSPS()
-            const datosSPS = await obtenerInventarioSPS();
+        } else {
 
-            productosSPS = datosSPS?.productos || [];
-
-        } catch (errorSPS) {
-
-            console.warn(
-                "No se pudo cargar el inventario SPS:",
-                errorSPS
+            console.error(
+                "No se pudo cargar el inventario Tegus:",
+                resultadoTegus.reason
             );
 
-            productosSPS = [];
         }
 
 
-        // ================================
+        // ========================================
+        // INVENTARIO SPS
+        // ========================================
+
+        let productosSPS = [];
+
+        if (resultadoSPS.status === "fulfilled") {
+
+            productosSPS =
+                resultadoSPS.value?.productos || [];
+
+        } else {
+
+            console.warn(
+                "No se pudo cargar el inventario SPS:",
+                resultadoSPS.reason
+            );
+
+        }
+
+
+        // ========================================
         // MARCAR BODEGA
-        // ================================
+        // ========================================
 
-        const tegusConBodega = productosTegus.map(producto => ({
+        const tegusConBodega =
+            productosTegus.map(producto => ({
 
-            ...producto,
+                ...producto,
 
-            bodega: "Tegus"
-            
-        }));
+                bodega: "Tegus"
 
-
-        const spsConBodega = productosSPS.map(producto => ({
-
-            ...producto,
-
-            bodega: "SPS"
-
-        }));
+            }));
 
 
-        // ================================
+        const spsConBodega =
+            productosSPS.map(producto => ({
+
+                ...producto,
+
+                bodega: "SPS"
+
+            }));
+
+
+        // ========================================
         // UNIR TEGUS + SPS
-        // ================================
+        // ========================================
 
         const todosLosProductos = [
-
             ...tegusConBodega,
-
             ...spsConBodega
-
         ];
 
 
-        // ================================
+        // ========================================
         // AGRUPAR POR SKU
-        // ================================
+        // ========================================
 
         const productosAgrupados = new Map();
 
@@ -210,8 +300,10 @@ async function cargarInventarioCompleto() {
             .toUpperCase();
 
 
-            // Si no tiene SKU, no intentamos
-            // fusionarlo con otro producto.
+            // ==================================
+            // PRODUCTO SIN SKU
+            // ==================================
+
             if (!sku) {
 
                 inventario.push(producto);
@@ -228,9 +320,7 @@ async function cargarInventarioCompleto() {
             if (!productosAgrupados.has(sku)) {
 
                 productosAgrupados.set(
-
                     sku,
-
                     {
 
                         ...producto,
@@ -242,7 +332,6 @@ async function cargarInventarioCompleto() {
                         lotes: []
 
                     }
-
                 );
 
             }
@@ -285,8 +374,7 @@ async function cargarInventarioCompleto() {
 
                         ...lote,
 
-                        // IMPORTANTE:
-                        // cada lote conserva su bodega
+                        // Cada lote conserva su bodega
 
                         bodega:
                             lote.bodega ||
@@ -297,12 +385,10 @@ async function cargarInventarioCompleto() {
 
                 });
 
-            }
-
-            else {
+            } else {
 
                 // ==================================
-                // SI EL PRODUCTO NO VIENE CON LOTES
+                // PRODUCTO SIN LOTES
                 // ==================================
 
                 productoFinal.lotes.push({
@@ -355,6 +441,12 @@ async function cargarInventarioCompleto() {
         );
 
 
+
+        // Construir índices para acelerar
+        // marcas, categorías y productos
+        construirIndicesInventario();
+
+
         // ==================================
         // LOG DE CONTROL
         // ==================================
@@ -379,17 +471,7 @@ async function cargarInventarioCompleto() {
         // DASHBOARD
         // ==================================
 
-        actualizarDashboard({
-
-            ...datosTegus,
-
-            productos: inventario,
-
-            total: inventario.length
-
-        });
-
-
+    
         // ==================================
         // MOSTRAR MARCAS
         // ==================================
@@ -405,8 +487,8 @@ async function cargarInventarioCompleto() {
         );
 
     }
-}
 
+}
 
 
 // ========================================
@@ -631,8 +713,6 @@ document.getElementById("subtituloPagina").textContent = "Gestión de inventario
 // ========================================
 // MOSTRAR MARCAS
 // ========================================
-
-
 function mostrarMarcas() {
 
     rutaActual.marca = "";
@@ -640,43 +720,60 @@ function mostrarMarcas() {
 
     mostrarDashboardCards(true);
 
-    const contenedor = document.getElementById("productList");
+    const contenedor =
+        document.getElementById("productList");
+
+    if (!contenedor) return;
 
     contenedor.innerHTML = "";
 
-    const marcas = [...new Set(inventario.map(p => p.proveedor))]
-        .filter(Boolean)
-        .sort();
+    const marcas =
+        Array.from(indiceMarcas.keys())
+            .filter(Boolean)
+            .sort();
+
+    const fragment =
+        document.createDocumentFragment();
 
     marcas.forEach(marca => {
 
-        const cantidad = inventario.filter(p => p.proveedor === marca).length;
+        const cantidad =
+            indiceMarcas.get(marca)?.length || 0;
 
-        crearCarpeta(
-            "📁 " + marca,
-            cantidad + " productos",
-            () => {
+        const div =
+            document.createElement("div");
 
-                rutaActual.marca = marca;
-                rutaActual.categoria = "";
+        div.className = "product-card";
 
-                mostrarCategorias(marca);
+        div.innerHTML = `
+            <div class="product-info">
+                <h3>📁 ${marca}</h3>
+                <p>${cantidad} productos</p>
+            </div>
 
-            }
-        );
+            <button class="btn-detail">
+                Abrir
+            </button>
+        `;
+
+        div.onclick = () => {
+
+            rutaActual.marca = marca;
+            rutaActual.categoria = "";
+
+            mostrarCategorias(marca);
+
+        };
+
+        fragment.appendChild(div);
 
     });
+
+    contenedor.appendChild(fragment);
 
     actualizarBreadcrumb();
 
 }
-
-
-// ========================================
-// MOSTRAR CATEGORIAS
-// ========================================
-
-
 function mostrarCategorias(marca) {
 
     rutaActual.marca = marca;
@@ -684,44 +781,70 @@ function mostrarCategorias(marca) {
 
     mostrarDashboardCards(false);
 
-    const contenedor = document.getElementById("productList");
+    const contenedor =
+        document.getElementById("productList");
+
+    if (!contenedor) return;
 
     contenedor.innerHTML = "";
 
-    const categorias = [...new Set(
-        inventario
-            .filter(p => p.proveedor === marca)
-            .map(p => p.categoria)
-    )]
-        .filter(Boolean)
-        .sort();
+    const productosMarca =
+        indiceMarcas.get(marca) || [];
+
+    const categorias = [
+        ...new Set(
+            productosMarca
+                .map(p => p.categoria)
+                .filter(Boolean)
+        )
+    ].sort();
+
+    const fragment =
+        document.createDocumentFragment();
 
     categorias.forEach(categoria => {
 
-        const cantidad = inventario.filter(p =>
-            p.proveedor === marca &&
-            p.categoria === categoria
-        ).length;
+        const cantidad =
+            indiceCategorias
+                .get(`${marca}|||${categoria}`)
+                ?.length || 0;
 
-        crearCarpeta(
-            "📂 " + categoria,
-            cantidad + " productos",
-            () => {
+        const div =
+            document.createElement("div");
 
-                rutaActual.categoria = categoria;
+        div.className = "product-card";
 
-                mostrarProductos(marca, categoria);
+        div.innerHTML = `
+            <div class="product-info">
+                <h3>📂 ${categoria}</h3>
+                <p>${cantidad} productos</p>
+            </div>
 
-            }
-        );
+            <button class="btn-detail">
+                Abrir
+            </button>
+        `;
+
+        div.onclick = () => {
+
+            rutaActual.categoria = categoria;
+
+            mostrarProductos(
+                marca,
+                categoria
+            );
+
+        };
+
+        fragment.appendChild(div);
 
     });
+
+    contenedor.appendChild(fragment);
 
     actualizarBreadcrumb();
 
 }
-
-
 // ========================================
 // MOSTRAR PRODUCTOS
 // ========================================
@@ -734,28 +857,41 @@ function mostrarProductos(marca, categoria) {
 
     mostrarDashboardCards(false);
 
-    const contenedor = document.getElementById("productList");
+    const contenedor =
+        document.getElementById("productList");
+
+    if (!contenedor) return;
 
     contenedor.innerHTML = "";
 
-    const productos = inventario.filter(p =>
-        p.proveedor === marca &&
-        p.categoria === categoria
-    );
+    const productos =
+        indiceCategorias.get(
+            `${marca}|||${categoria}`
+        ) || [];
 
     if (productos.length === 0) {
 
-        contenedor.innerHTML = "<p class='sin-resultados'>No hay productos en esta categoría.</p>";
+        contenedor.innerHTML =
+            "<p class='sin-resultados'>No hay productos en esta categoría.</p>";
 
-    } else {
+        actualizarBreadcrumb();
 
-        productos.forEach(producto => {
-
-            renderProductCard(producto, contenedor);
-
-        });
-
+        return;
     }
+
+    const fragment =
+        document.createDocumentFragment();
+
+    productos.forEach(producto => {
+
+        renderProductCard(
+            producto,
+            fragment
+        );
+
+    });
+
+    contenedor.appendChild(fragment);
 
     actualizarBreadcrumb();
 
@@ -940,71 +1076,101 @@ function mostrarDashboardCards(mostrar) {
 
 function configurarBuscador() {
 
-    const input = document.getElementById("buscador");
+    const input =
+        document.getElementById("buscador");
 
     if (!input) return;
 
+    let timeoutBusqueda = null;
+
     input.addEventListener("input", () => {
 
-        const texto = input.value.toLowerCase().trim();
+        clearTimeout(timeoutBusqueda);
 
-        // ¿Estamos en la pantalla de Movimientos?
-        const enMovimientos =
-            document.getElementById("seccionMovimientos").style.display === "block";
+        const texto =
+            input.value.toLowerCase().trim();
 
-        const enVencimientos =
-            document.getElementById("seccionVencimientos").style.display === "block";
+        timeoutBusqueda = setTimeout(() => {
 
-        // Si el buscador quedó vacío...
-        if (texto === "") {
+            ejecutarBusqueda(texto);
 
-        if (enMovimientos || enVencimientos) return;
-
-         mostrarDashboardCards(true);
-         mostrarMarcas();
-         return;
-
-}
-
-         if (enMovimientos || enVencimientos) return;
-
-        mostrarDashboardCards(false);
-
-        const encontrados = inventario.filter(p =>
-
-            (p.nombre || "").toLowerCase().includes(texto) ||
-            (p.sku || "").toLowerCase().includes(texto) ||
-            (p.proveedor || "").toLowerCase().includes(texto) ||
-            (p.categoria || "").toLowerCase().includes(texto)
-
-        );
-
-        mostrarResultadosBusqueda(encontrados);
+        }, 120);
 
     });
+
+}
+function ejecutarBusqueda(texto) {
+
+    const movimientos =
+        document.getElementById("seccionMovimientos");
+
+    const vencimientos =
+        document.getElementById("seccionVencimientos");
+
+    const enMovimientos =
+        movimientos?.style.display === "block";
+
+    const enVencimientos =
+        vencimientos?.style.display === "block";
+
+    if (enMovimientos || enVencimientos) {
+        return;
+    }
+
+    if (!texto) {
+
+        mostrarDashboardCards(true);
+
+        mostrarMarcas();
+
+        return;
+    }
+
+    mostrarDashboardCards(false);
+
+    const encontrados =
+        buscarProductos(
+            inventario,
+            texto
+        );
+
+    mostrarResultadosBusqueda(
+        encontrados
+    );
 
 }
 
 
 function mostrarResultadosBusqueda(lista) {
 
-    const contenedor = document.getElementById("productList");
+    const contenedor =
+        document.getElementById("productList");
+
+    if (!contenedor) return;
 
     contenedor.innerHTML = "";
 
-    if (lista.length === 0) {
+    if (!lista.length) {
 
-        contenedor.innerHTML = "<p class='sin-resultados'>No se encontraron productos.</p>";
+        contenedor.innerHTML =
+            "<p class='sin-resultados'>No se encontraron productos.</p>";
 
         return;
-
     }
+
+    const fragment =
+        document.createDocumentFragment();
 
     lista.forEach(producto => {
 
-        renderProductCard(producto, contenedor);
+        renderProductCard(
+            producto,
+            fragment
+        );
 
     });
+
+    contenedor.appendChild(fragment);
 
 }
 
