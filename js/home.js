@@ -24,7 +24,63 @@ let rutaActual = {
 
 let indiceMarcas = new Map();
 let indiceCategorias = new Map();
+// ==========================================================
+// RENDERIZADO PROGRESIVO DE PRODUCTOS
+// Evita crear cientos de tarjetas al mismo tiempo
+// ==========================================================
 
+let renderVersion = 0;
+
+function renderProductosProgresivo(productos, contenedor, lote = 30) {
+
+    renderVersion++;
+
+    const versionActual = renderVersion;
+
+    contenedor.innerHTML = "";
+
+    let posicion = 0;
+
+    function renderSiguienteLote() {
+
+        // Si el usuario cambió de categoría o búsqueda,
+        // cancelamos este render anterior.
+        if (versionActual !== renderVersion) {
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        const limite = Math.min(
+            posicion + lote,
+            productos.length
+        );
+
+        for (; posicion < limite; posicion++) {
+
+            renderProductCard(
+                productos[posicion],
+                fragment
+            );
+
+        }
+
+        contenedor.appendChild(fragment);
+
+        if (posicion < productos.length) {
+
+            requestAnimationFrame(
+                renderSiguienteLote
+            );
+
+        }
+
+    }
+
+    requestAnimationFrame(
+        renderSiguienteLote
+    );
+}
 function construirIndicesInventario() {
 
     indiceMarcas.clear();
@@ -115,14 +171,112 @@ function cargarUsuario() {
 
 async function iniciar() {
 
-    await Promise.all([
-        cargarResumenRapido(),
-        cargarInventarioCompleto()
-    ]);
+    await cargarInicio();
 
 }
 
+async function cargarInicio() {
 
+    console.time("⏱️ CARGA INICIAL");
+
+    try {
+
+        const datos = await obtenerInicio();
+
+        inventario =
+            Array.isArray(datos?.productos)
+                ? datos.productos
+                : [];
+
+        construirIndicesInventario();
+
+        console.log(
+            "Productos combinados:",
+            inventario.length
+        );
+
+        if (datos?.resumen) {
+
+            const resumen = datos.resumen;
+
+            const elTotal =
+                document.getElementById("totalProductos");
+
+            if (elTotal)
+                elTotal.textContent =
+                    resumen.total ?? inventario.length;
+
+            const elStockBajo =
+                document.getElementById("stockBajo");
+
+            if (elStockBajo)
+                elStockBajo.textContent =
+                    resumen.stockBajo ?? 0;
+
+            const elPorVencer =
+                document.getElementById("porVencer");
+
+            if (elPorVencer)
+                elPorVencer.textContent =
+                    resumen.porVencer ?? 0;
+
+            const elMarcas =
+                document.getElementById("marcas");
+
+            if (elMarcas)
+                elMarcas.textContent =
+                    resumen.marcas ?? 0;
+
+            const elVigentes =
+                document.getElementById("lotesVigentes");
+
+            if (elVigentes)
+                elVigentes.textContent =
+                    resumen.lotesVigentes ?? 0;
+
+            const elPorVencerLotes =
+                document.getElementById("lotesPorVencer");
+
+            if (elPorVencerLotes)
+                elPorVencerLotes.textContent =
+                    resumen.lotesPorVencer ?? 0;
+
+            const elUrgentes =
+                document.getElementById("lotesUrgentes");
+
+            if (elUrgentes)
+                elUrgentes.textContent =
+                    resumen.lotesUrgentes ?? 0;
+
+            const elVencidos =
+                document.getElementById("lotesVencidos");
+
+            if (elVencidos)
+                elVencidos.textContent =
+                    resumen.lotesVencidos ?? 0;
+        }
+
+        mostrarMarcas();
+
+    } catch (error) {
+
+        console.error(
+            "Error cargando inicio:",
+            error
+        );
+
+        alert(
+            "Error cargando inventario:\n\n" +
+            error.message
+        );
+
+    } finally {
+
+        console.timeEnd("⏱️ CARGA INICIAL");
+
+    }
+
+}
 // ========================================
 // DASHBOARD
 // ========================================
@@ -189,19 +343,23 @@ if (elVencidos) {
 
 async function cargarInventarioCompleto() {
 
+    console.time("⏱️ INVENTARIO COMPLETO");
+
     try {
 
         // ========================================
         // CARGAR TEGUS + SPS AL MISMO TIEMPO
         // ========================================
 
-        const [resultadoTegus, resultadoSPS] =
-            await Promise.allSettled([
-                obtenerInventario(),
-                obtenerInventarioSPS()
-            ]);
+       console.time("⏱️ TEGUS + SPS");
 
+const [resultadoTegus, resultadoSPS] =
+    await Promise.allSettled([
+        obtenerInventario(),
+        obtenerInventarioSPS()
+    ]);
 
+console.timeEnd("⏱️ TEGUS + SPS");        
         // ========================================
         // INVENTARIO TEGUS
         // ========================================
@@ -284,7 +442,7 @@ async function cargarInventarioCompleto() {
         // ========================================
         // AGRUPAR POR SKU
         // ========================================
-
+        console.time("⏱️ PROCESAMIENTO PRODUCTOS");
         const productosAgrupados = new Map();
 
 
@@ -445,6 +603,8 @@ async function cargarInventarioCompleto() {
         // Construir índices para acelerar
         // marcas, categorías y productos
         construirIndicesInventario();
+        console.timeEnd("⏱️ PROCESAMIENTO PRODUCTOS");
+        console.timeEnd("⏱️ INVENTARIO COMPLETO");
 
 
         // ==================================
@@ -879,22 +1039,13 @@ function mostrarProductos(marca, categoria) {
         return;
     }
 
-    const fragment =
-        document.createDocumentFragment();
+   renderProductosProgresivo(
+    productos,
+    contenedor,
+    30
+);
 
-    productos.forEach(producto => {
-
-        renderProductCard(
-            producto,
-            fragment
-        );
-
-    });
-
-    contenedor.appendChild(fragment);
-
-    actualizarBreadcrumb();
-
+actualizarBreadcrumb();
 }
 
 

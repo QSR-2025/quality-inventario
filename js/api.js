@@ -4,7 +4,7 @@
    Optimizada para reducir consultas y mejorar velocidad
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzpZSU2Q6e-ywPMyKgF1pP7CN3nzvGvQAKw6fo-l_0eoM6oAhUCTmrqPQi6uMqPjBLQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyXeFe-zk6ZaCEgX8c6IAEX_wUvSsANLGIWhiknWaTKquB35SLjoTXsuhgoBIfgUk10/exec";
 
 /* ==========================================================
    CONFIGURACIÓN DE CACHÉ
@@ -157,6 +157,24 @@ async function obtenerInventarioSPS(forzar = false) {
         url,
         "inventarioSPS",
         CACHE_TTL.inventarioSPS,
+        forzar
+    );
+}
+/* ==========================================================
+   CARGA INICIAL COMPLETA
+   TEGUS + SPS + RESUMEN
+========================================================== */
+
+async function obtenerInicio(forzar = false) {
+
+    const url =
+        `${API_URL}?action=getInicio` +
+        `&forzar=${forzar ? 1 : 0}`;
+
+    return await apiFetch(
+        url,
+        "inicio",
+        CACHE_TTL.inventario,
         forzar
     );
 }
