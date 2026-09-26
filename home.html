@@ -61,6 +61,11 @@ Inventario
     Productos
 </a>
 
+<a id="menuAlmacen">
+    <i class="fas fa-right-left"></i>
+    Almacén
+</a>
+
 <a id="menuMovimientos">
     <i class="fas fa-clock-rotate-left"></i>
     Movimientos
@@ -221,7 +226,179 @@ Inventario
 <!-- ==========================
      RESULTADOS
 ========================== -->
+<!-- ==========================
+     ALMACÉN
+========================== -->
 
+<section id="seccionAlmacen" class="results" style="display:none;">
+
+    <div class="results-header">
+        <h2>
+            <i class="fas fa-warehouse"></i>
+            Almacén
+        </h2>
+
+        <p>Registro de entradas y salidas de inventario</p>
+    </div>
+
+
+    <!-- PESTAÑAS -->
+    <div class="almacen-tabs">
+
+        <button id="tabEntrada" class="almacen-tab active">
+            <i class="fas fa-arrow-right-to-bracket"></i>
+            Entrada
+        </button>
+
+        <button id="tabSalida" class="almacen-tab">
+            <i class="fas fa-arrow-right-from-bracket"></i>
+            Salida
+        </button>
+
+    </div>
+
+
+    <!-- ==========================
+         FORMULARIO ENTRADA
+    ========================== -->
+
+    <div id="formEntrada" class="form-almacen">
+
+        <h3>Registrar entrada</h3>
+
+        <!-- BODEGA -->
+        <label for="entradaBodega">Bodega</label>
+
+        <select id="entradaBodega">
+        <option value="">Seleccione una bodega</option>
+        <option value="Tegus">Tegucigalpa</option>
+        <option value="SPS">San Pedro Sula</option>
+        </select>
+        <!-- PRODUCTO -->
+        <label for="entradaProducto">Producto</label>
+
+        <input
+            type="text"
+            id="entradaProducto"
+            list="listaProductosEntrada"
+            placeholder="Escriba código o nombre del producto"
+            autocomplete="off">
+
+        <datalist id="listaProductosEntrada"></datalist>
+
+
+        <!-- LOTE -->
+        <label for="entradaLote">Lote</label>
+
+        <select id="entradaLote">
+            <option value="">Seleccione un lote</option>
+        </select>
+
+
+        <!-- CANTIDAD -->
+        <label for="entradaCantidad">Cantidad</label>
+
+        <input
+            type="number"
+            id="entradaCantidad"
+            min="1"
+            placeholder="Ingrese la cantidad">
+
+
+        <!-- OBSERVACIÓN -->
+        <label for="entradaObservacion">Observación</label>
+
+        <textarea
+            id="entradaObservacion"
+            placeholder="Observación opcional"></textarea>
+
+
+        <!-- BOTÓN -->
+        <button id="btnRegistrarEntrada" type="button">
+            <i class="fas fa-plus"></i>
+            Registrar entrada
+        </button>
+
+    </div>
+
+
+    <!-- ==========================
+         FORMULARIO SALIDA
+    ========================== -->
+
+    <div id="formSalida"
+         class="form-almacen"
+         style="display:none;">
+
+        <h3>Registrar salida</h3>
+
+
+        <!-- CLIENTE -->
+        <label for="salidaCliente">Cliente</label>
+
+        <input
+            type="text"
+            id="salidaCliente"
+            placeholder="Ingrese el nombre del cliente"
+            autocomplete="off">
+
+
+        <!-- BODEGA -->
+        <label for="salidaBodega">Bodega</label>
+
+        <select id="salidaBodega">
+        <option value="">Seleccione una bodega</option>
+        <option value="Tegus">Tegucigalpa</option>
+        <option value="SPS">San Pedro Sula</option>
+        </select>
+        <!-- PRODUCTO -->
+        <label for="salidaProducto">Producto</label>
+
+        <input
+            type="text"
+            id="salidaProducto"
+            list="listaProductosSalida"
+            placeholder="Escriba código o nombre del producto"
+            autocomplete="off">
+
+        <datalist id="listaProductosSalida"></datalist>
+
+
+        <!-- LOTE -->
+        <label for="salidaLote">Lote</label>
+
+        <select id="salidaLote">
+            <option value="">Seleccione un lote</option>
+        </select>
+
+
+        <!-- CANTIDAD -->
+        <label for="salidaCantidad">Cantidad</label>
+
+        <input
+            type="number"
+            id="salidaCantidad"
+            min="1"
+            placeholder="Ingrese la cantidad">
+
+
+        <!-- OBSERVACIÓN -->
+        <label for="salidaObservacion">Observación</label>
+
+        <textarea
+            id="salidaObservacion"
+            placeholder="Observación opcional"></textarea>
+
+
+        <!-- BOTÓN -->
+        <button id="btnRegistrarSalida" type="button">
+            <i class="fas fa-minus"></i>
+            Registrar salida
+        </button>
+
+    </div>
+
+</section>
 <!-- ==========================
      MOVIMIENTOS
 ========================== -->
@@ -765,6 +942,7 @@ LOTES
 
 <script src="js/api.js"></script>
 <script src="js/home.js"></script>
+<script src="js/almacen.js"></script>
 <script src="js/movimientos.js"></script>
 <script src="js/vencimientos.js"></script>
 <script src="js/pdf-vencimientos.js"></script>

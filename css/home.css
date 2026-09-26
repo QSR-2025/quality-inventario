@@ -1060,3 +1060,305 @@ header{
     color:#0F4C81;
 
 }
+/* =====================================
+   ALMACÉN
+===================================== */
+
+#seccionAlmacen {
+    padding: 0;
+}
+
+.almacen-panel {
+    padding: 28px;
+}
+
+.almacen-tabs {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.almacen-tab {
+    border: none;
+    background: #eef2f7;
+    color: #2d4f7c;
+    padding: 12px 22px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.almacen-tab.active {
+    background: #2456a6;
+    color: white;
+}
+
+.formulario-almacen {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    align-items: end;
+    margin-top: 20px;
+}
+
+.campo-almacen {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.campo-almacen label {
+    font-weight: 600;
+    color: #425466;
+}
+
+.campo-almacen select,
+.campo-almacen input,
+.campo-almacen textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid #d5dce5;
+    border-radius: 8px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.campo-almacen textarea {
+    resize: vertical;
+    min-height: 44px;
+}
+
+.btn-registrar-movimiento {
+    background: #2456a6;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    height: 44px;
+}
+
+.btn-registrar-movimiento:hover {
+    background: #1b4385;
+}
+
+@media (max-width: 1000px) {
+    .formulario-almacen {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .formulario-almacen {
+        grid-template-columns: 1fr;
+    }
+}
+/* =====================================
+   FORMULARIO ALMACÉN
+===================================== */
+
+#seccionAlmacen .movimientos-toolbar,
+#seccionAlmacen .almacen-formulario {
+    margin-top: 20px;
+}
+
+/* Área del formulario */
+#seccionAlmacen form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 16px;
+    padding: 20px;
+    background: #f8fafc;
+    border: 1px solid #e1e7ef;
+    border-radius: 14px;
+}
+
+/* Campos */
+#seccionAlmacen form label {
+    font-weight: 600;
+    color: #3d4f63;
+    margin-bottom: 6px;
+}
+
+/* Select, input y textarea */
+#seccionAlmacen form select,
+#seccionAlmacen form input,
+#seccionAlmacen form textarea {
+    padding: 11px 12px;
+    border: 1px solid #d5dde8;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #334155;
+    background: white;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+/* Tamaños */
+#seccionAlmacen form select {
+    min-width: 180px;
+}
+
+#seccionAlmacen form input {
+    min-width: 150px;
+}
+
+#seccionAlmacen form textarea {
+    min-width: 200px;
+    height: 44px;
+    resize: none;
+}
+
+/* Botón registrar */
+#seccionAlmacen form button {
+    background: #2456a6;
+    color: white;
+    border: none;
+    padding: 0 20px;
+    height: 44px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+#seccionAlmacen form button:hover {
+    background: #193f7d;
+    transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+
+    #seccionAlmacen form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #seccionAlmacen form select,
+    #seccionAlmacen form input,
+    #seccionAlmacen form textarea,
+    #seccionAlmacen form button {
+        width: 100%;
+        min-width: 0;
+    }
+
+}
+/* =====================================
+   ALMACÉN - FORMULARIOS
+===================================== */
+
+.form-almacen {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 18px;
+    align-items: end;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 16px;
+    margin-top: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+}
+
+.form-almacen h3 {
+    grid-column: 1 / -1;
+    margin: 0 0 5px;
+    color: #334155;
+    font-size: 20px;
+}
+
+.form-almacen label {
+    display: block;
+    margin-bottom: 7px;
+    color: #475569;
+    font-weight: 600;
+}
+
+.form-almacen select,
+.form-almacen input,
+.form-almacen textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #d7dee8;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+}
+
+.form-almacen select:focus,
+.form-almacen input:focus,
+.form-almacen textarea:focus {
+    border-color: #2456a6;
+    box-shadow: 0 0 0 3px rgba(36, 86, 166, 0.12);
+}
+
+.form-almacen textarea {
+    min-height: 46px;
+    resize: vertical;
+}
+
+.form-almacen button {
+    width: 100%;
+    min-height: 46px;
+    border: none;
+    border-radius: 10px;
+    background: #2456a6;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 12px 18px;
+    transition: 0.2s;
+}
+
+.form-almacen button:hover {
+    transform: translateY(-1px);
+    opacity: 0.92;
+}
+
+/* Pestañas Entrada / Salida */
+
+.almacen-tabs {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.almacen-tab {
+    border: none;
+    padding: 12px 22px;
+    border-radius: 10px;
+    background: #e8edf5;
+    color: #475569;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.almacen-tab.active {
+    background: #2456a6;
+    color: white;
+}
+
+/* Responsive */
+
+@media (max-width: 900px) {
+    .form-almacen {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .form-almacen {
+        grid-template-columns: 1fr;
+    }
+
+    .almacen-tabs {
+        flex-direction: column;
+    }
+}

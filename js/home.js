@@ -639,6 +639,13 @@ console.timeEnd("⏱️ TEGUS + SPS");
         mostrarMarcas();
 
 
+    // ==================================
+// ACTUALIZAR PRODUCTOS DE ALMACÉN
+// ==================================
+
+if (typeof cargarProductosAlmacen === "function") {
+    cargarProductosAlmacen();
+}
     } catch (error) {
 
         console.error(
@@ -824,9 +831,9 @@ function actualizarDashboard(datos) {
 function configurarMenu() {
 
     const menuProductos = document.getElementById("menuProductos");
+    const menuAlmacen = document.getElementById("menuAlmacen");
     const menuMovimientos = document.getElementById("menuMovimientos");
     const menuVencimientos = document.getElementById("menuVencimientos");
-    
 
     // Productos
     if (menuProductos) {
@@ -840,13 +847,32 @@ document.getElementById("subtituloPagina").textContent = "Gestión de inventario
             document.getElementById("seccionResultados").style.display = "block";
             document.getElementById("seccionMovimientos").style.display = "none";
             document.getElementById("seccionVencimientos").style.display = "none";
+            document.getElementById("seccionAlmacen").style.display = "none";
 
             mostrarMarcas();
 
         });
 
     }
+// Almacén
+if (menuAlmacen) {
 
+    menuAlmacen.addEventListener("click", () => {
+
+        document.getElementById("tituloPagina").textContent =
+            "Almacén";
+
+        document.getElementById("subtituloPagina").textContent =
+            "Registro de entradas y salidas de inventario";
+
+        document.getElementById("seccionResultados").style.display = "none";
+        document.getElementById("seccionAlmacen").style.display = "block";
+        document.getElementById("seccionMovimientos").style.display = "none";
+        document.getElementById("seccionVencimientos").style.display = "none";
+
+    });
+
+}
     // Movimientos
     if (menuMovimientos) {
 

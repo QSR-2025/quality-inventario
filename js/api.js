@@ -4,7 +4,7 @@
    Optimizada para reducir consultas y mejorar velocidad
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbyXeFe-zk6ZaCEgX8c6IAEX_wUvSsANLGIWhiknWaTKquB35SLjoTXsuhgoBIfgUk10/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx1mJrzMF090-C10Ajy4WYrdLgf0r_eGVA3q7GHYXzPfd5FCSrsEp2uXkjkCo29ioyR/exec";
 
 /* ==========================================================
    CONFIGURACIÓN DE CACHÉ
@@ -347,4 +347,32 @@ async function getVencimientos(
         CACHE_TTL.vencimientos,
         forzar
     );
+}
+/* ==========================================================
+   REGISTRO DE MOVIMIENTOS - ALMACÉN
+========================================================== */
+
+async function registrarMovimiento(datos) {
+
+    const respuesta = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({
+            action: "registrarMovimiento",
+            ...datos
+        })
+    });
+
+    if (!respuesta.ok) {
+        throw new Error(`HTTP ${respuesta.status}`);
+    }
+
+    const resultado = await respuesta.json();
+
+    // Si se registró correctamente, limpiar datos antiguos
+    // para que el inventario se recargue actualizado.
+    if (resultado.success) {
+        limpiarCacheAPI();
+    }
+
+    return resultado;
 }
