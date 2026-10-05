@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Quality Inventario</title>
+
+
+<link rel="stylesheet" href="css/home.css">
+
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+
+<!-- ==========================
+     SIDEBAR
+========================== -->
+
+
+<aside class="sidebar">
+
+
+<div class="logo">
+
+
+<img src="assets/logo.png" alt="Quality">
+
+
+<h2>
+QUALITY
+</h2>
+
+
+<span>
+Inventario
+</span>
+
+
+</div>
+
+<nav>
+
+
+<a id="menuProductos">
+    <i class="fas fa-boxes-stacked"></i>
+    Productos
+</a>
+
+<a id="menuAlmacen">
+    <i class="fas fa-right-left"></i>
+    Almacén
+</a>
+
+<a id="menuMovimientos">
+    <i class="fas fa-clock-rotate-left"></i>
+    Movimientos
+</a>
+
+<a id="menuVencimientos">
+    <i class="fas fa-calendar-xmark"></i>
+    Vencimientos
+</a>
+<a>
+    <i class="fas fa-gear"></i>
+    Configuración
+</a>
+
+</nav>
+
+
+
+</aside>
+
+
+
+
+
+
+
+
+
+<!-- ==========================
+     CONTENIDO
+========================== -->
+
+
+<main class="content">
+
+
+
+
+
+<header>
+
+<div class="header-left">
+
+    <h1 id="tituloPagina">Productos</h1>
+
+    <p id="subtituloPagina">
+        Gestión de inventario y vencimientos
+    </p>
+
+</div>
+
+<div class="search">
+
+    <i class="fas fa-search"></i>
+
+    <input
+        id="buscador"
+        type="text"
+        placeholder="Buscar producto, SKU, lote, proveedor...">
+
+</div>
+
+<div class="user">
+
+    <div class="user-info">
+
+        <span>Bienvenido</span>
+
+        <strong id="nombreUsuario">Usuario</strong>
+
+    </div>
+
+    <button id="logout">
+
+        <i class="fas fa-right-from-bracket"></i>
+
+    </button>
+
+</div>
+
+</header>
+
+
+
+
+
+
+
+
+<!-- ==========================
+     TARJETAS DASHBOARD
+========================== -->
+
+
+<section class="cards" id="dashboardCards">
+
+    <div class="card" data-title="Productos">
+
+        <div class="card-header">
+            <i class="fas fa-boxes"></i>
+        </div>
+
+        <h1 id="totalProductos">0</h1>
+
+    </div>
+
+    <div class="card dashboard-filter"
+         data-filtro="vigente"
+         data-title="Lotes Vigentes">
+
+        <div class="card-header">
+            <i class="fas fa-circle-check"></i>
+        </div>
+
+        <h1 id="lotesVigentes">0</h1>
+
+    </div>
+
+    <div class="card dashboard-filter"
+         data-filtro="por_vencer"
+         data-title="Por Vencer">
+
+        <div class="card-header">
+            <i class="fas fa-calendar-days"></i>
+        </div>
+
+        <h1 id="lotesPorVencer">0</h1>
+
+    </div>
+
+    <div class="card dashboard-filter"
+         data-filtro="urgente"
+         data-title="Urgentes">
+
+        <div class="card-header">
+            <i class="fas fa-triangle-exclamation"></i>
+        </div>
+
+        <h1 id="lotesUrgentes">0</h1>
+
+    </div>
+
+    <div class="card dashboard-filter"
+         data-filtro="vencido"
+         data-title="Vencidos">
+
+        <div class="card-header">
+            <i class="fas fa-skull-crossbones"></i>
+        </div>
+
+        <h1 id="lotesVencidos">0</h1>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================
+     RESULTADOS
+========================== -->
+<!-- ==========================
+     ALMACÉN
+========================== -->
+
+<section id="seccionAlmacen" class="results" style="display:none;">
+
+    <div class="results-header">
+        <h2>
+            <i class="fas fa-warehouse"></i>
+            Almacén
+        </h2>
+
+        <p>Registro de entradas y salidas de inventario</p>
+    </div>
+
+
+    <!-- PESTAÑAS -->
+    <div class="almacen-tabs">
+
+        <button id="tabEntrada" class="almacen-tab active">
+            <i class="fas fa-arrow-right-to-bracket"></i>
+            Entrada
+        </button>
+
+        <button id="tabSalida" class="almacen-tab">
+            <i class="fas fa-arrow-right-from-bracket"></i>
+            Salida
+        </button>
+
+    </div>
+
+
+    <!-- ==========================
+         FORMULARIO ENTRADA
+    ========================== -->
+
+    <div id="formEntrada" class="form-almacen">
+
+        <h3>Registrar entrada</h3>
+
+        <!-- BODEGA -->
+        <label for="entradaBodega">Bodega</label>
+
+        <select id="entradaBodega">
+        <option value="">Seleccione una bodega</option>
+        <option value="Tegus">Tegucigalpa</option>
+        <option value="SPS">San Pedro Sula</option>
+        </select>
+        <label for="entradaDocumento">Número de traslado</label>
+        <input type="text" id="entradaDocumento" placeholder="Número de traslado" autocomplete="off">
+
+        <label for="entradaSku">Código del producto (SKU)</label>
+        <input type="text" id="entradaSku" list="listaProductosEntrada" placeholder="Ingrese SKU" autocomplete="off">
+        <datalist id="listaProductosEntrada"></datalist>
+        <label for="entradaNombre">Nombre del producto</label>
+        <input type="text" id="entradaNombre" readonly placeholder="Se completa al seleccionar el SKU">
+        <input type="hidden" id="entradaProducto">
+
+
+        <!-- LOTE -->
+        <label for="entradaLote">Lote</label>
+
+        <select id="entradaLote">
+            <option value="">Seleccione un lote</option>
+        </select>
+        <button id="btnLoteNuevo" type="button" class="btn-secundario-almacen">+ Lote nuevo</button>
+        <div id="camposLoteNuevo" class="campo-lote-nuevo" hidden>
+            <label for="entradaNuevoLote">Número del lote nuevo</label>
+            <input type="text" id="entradaNuevoLote" placeholder="Ingrese el número del lote" autocomplete="off">
+            <label for="entradaVencimiento">Fecha de vencimiento</label>
+            <input type="date" id="entradaVencimiento">
+        </div>
+
+
+        <!-- CANTIDAD -->
+        <label for="entradaCantidad">Cantidad</label>
+
+        <input
+            type="number"
+            id="entradaCantidad"
+            min="1"
+            placeholder="Ingrese la cantidad">
+
+
+        <button id="btnAgregarEntrada" type="button">Agregar producto a la lista</button>
+        <div id="listaEntradasPendientes" class="tabla-movimientos-pendientes"></div>
+
+        <!-- OBSERVACIÓN -->
+        <label for="entradaObservacion">Observación</label>
+
+        <textarea
+            id="entradaObservacion"
+            placeholder="Observación opcional"></textarea>
+
+
+        <!-- BOTÓN -->
+        <button id="btnRegistrarEntrada" type="button">
+            <i class="fas fa-plus"></i>
+            Registrar entrada
+        </button>
+
+    </div>
+
+
+    <!-- ==========================
+         FORMULARIO SALIDA
+    ========================== -->
+
+    <div id="formSalida"
+         class="form-almacen"
+         style="display:none;">
+
+        <h3>Registrar salida</h3>
+
+
+        <!-- CLIENTE -->
+        <label for="salidaCliente">Cliente</label>
+
+        <input
+            type="text"
+            id="salidaCliente"
+            placeholder="Ingrese el nombre del cliente"
+            autocomplete="off">
+
+
+        <!-- BODEGA -->
+        <label for="salidaBodega">Bodega</label>
+
+        <select id="salidaBodega">
+        <option value="">Seleccione una bodega</option>
+        <option value="Tegus">Tegucigalpa</option>
+        <option value="SPS">San Pedro Sula</option>
+        </select>
+        <label for="salidaDocumento">Número de factura</label>
+        <input type="text" id="salidaDocumento" placeholder="Número de factura" autocomplete="off">
+
+        <label for="salidaSku">Código del producto (SKU)</label>
+        <input type="text" id="salidaSku" list="listaProductosSalida" placeholder="Ingrese SKU" autocomplete="off">
+        <datalist id="listaProductosSalida"></datalist>
+        <label for="salidaNombre">Nombre del producto</label>
+        <input type="text" id="salidaNombre" readonly placeholder="Se completa al seleccionar el SKU">
+        <input type="hidden" id="salidaProducto">
+
+
+        <!-- LOTE -->
+        <label for="salidaLote">Lote</label>
+
+        <select id="salidaLote">
+            <option value="">Seleccione un lote</option>
+        </select>
+
+
+        <!-- CANTIDAD -->
+        <label for="salidaCantidad">Cantidad</label>
+
+        <input
+            type="number"
+            id="salidaCantidad"
+            min="1"
+            placeholder="Ingrese la cantidad">
+
+
+        <button id="btnAgregarSalida" type="button">Agregar producto a la lista</button>
+        <div id="listaSalidasPendientes" class="tabla-movimientos-pendientes"></div>
+
+        <!-- OBSERVACIÓN -->
+        <label for="salidaObservacion">Observación</label>
+
+        <textarea
+            id="salidaObservacion"
+            placeholder="Observación opcional"></textarea>
+
+
+        <!-- BOTÓN -->
+        <button id="btnRegistrarSalida" type="button">
+            <i class="fas fa-minus"></i>
+            Registrar salida
+        </button>
+
+    </div>
+
+</section>
+<!-- ==========================
+     MOVIMIENTOS
+========================== -->
+
+<section id="seccionMovimientos" class="results" style="display:none;">
+
+<div class="results-header">
+
+<h2>
+<i class="fas fa-clock-rotate-left"></i>
+Centro de Reportes
+</h2>
+
+</div>
+
+
+<div class="movimientos-toolbar">
+
+
+<label>
+Fecha:
+</label>
+
+<input 
+type="date"
+id="fechaMovimientos">
+
+<p id="mensajeReporte" class="mensaje-reporte">
+    Seleccione una fecha para visualizar las estadísticas y descargar el reporte del día.
+</p>
+
+</div>
+
+
+
+<!-- ==========================
+     RESUMEN MOVIMIENTOS
+========================== -->
+
+<div id="resumenMovimientos" class="resumen-movimientos">
+
+    <div class="card-resumen">
+
+        <h3>Entradas</h3>
+
+        <span id="totalEntradas">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Salidas</h3>
+
+        <span id="totalSalidas">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Total</h3>
+
+        <span id="totalMovimientos">0</span>
+
+    </div>
+    <div class="card-resumen">
+
+    <h3>Productos</h3>
+
+    <span id="totalProductosMovimiento">0</span>
+
+</div>
+
+</div>
+<!-- ==========================
+     GRÁFICAS
+========================== -->
+
+<div id="graficasMovimientos">
+
+    <div class="grafica-card">
+
+        <h3>Entradas vs Salidas</h3>
+
+        <canvas id="graficaEntradasSalidas"></canvas>
+
+    </div>
+
+    <div class="grafica-card">
+
+        <h3>Productos con más movimientos</h3>
+
+        <canvas id="graficaProductos"></canvas>
+
+    </div>
+
+</div>
+
+<div style="text-align:center;margin-top:30px;">
+
+    <button id="btnDescargarExcel">
+
+        <i class="fas fa-file-excel"></i>
+
+        Descargar PDF de salidas
+
+    </button>
+
+</div>
+</section>
+
+<!-- ==========================
+     VENCIMIENTOS
+========================== -->
+
+<section id="seccionVencimientos"
+class="results"
+style="display:none;">
+
+<div class="results-header">
+
+<h2>
+
+<i class="fas fa-calendar-xmark"></i>
+
+Reporte de Vencimientos
+
+</h2>
+
+</div>
+
+<div class="vencimientos-toolbar">
+
+    <div>
+
+        <label for="mesVencimientos">
+
+            Mes
+
+        </label>
+
+        <select id="mesVencimientos">
+
+            <option>Enero</option>
+
+            <option>Febrero</option>
+
+            <option>Marzo</option>
+
+            <option>Abril</option>
+
+            <option>Mayo</option>
+
+            <option>Junio</option>
+
+            <option>Julio</option>
+
+            <option>Agosto</option>
+
+            <option>Septiembre</option>
+
+            <option>Octubre</option>
+
+            <option>Noviembre</option>
+
+            <option>Diciembre</option>
+
+        </select>
+
+    </div>
+
+    <button id="btnPdfVencimientos">
+
+        <i class="fas fa-file-pdf"></i>
+
+        Descargar PDF
+
+    </button>
+
+</div>
+
+<div class="resumen-vencimientos">
+
+    <div class="card-resumen">
+
+        <h3>Productos</h3>
+
+        <span id="vProductos">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Lotes</h3>
+
+        <span id="vLotes">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Unidades</h3>
+
+        <span id="vUnidades">0</span>
+
+    </div>
+
+    <div class="card-resumen">
+
+        <h3>Marcas</h3>
+
+        <span id="vMarcas">0</span>
+
+    </div>
+
+</div>
+
+<div class="grafica-card">
+
+    <h3>
+
+        Productos vencidos
+
+    </h3>
+
+    <canvas id="graficaVencimientos"></canvas>
+
+</div>
+
+<div class="tabla-vencimientos">
+
+    <h3>
+        <i class="fas fa-table"></i>
+        Detalle de productos vencidos
+    </h3>
+
+    <div class="tabla-responsive">
+
+        <table id="tablaVencimientos">
+
+            <thead>
+
+                <tr>
+
+                    <th>Marca</th>
+                    <th>Código</th>
+                    <th>Producto</th>
+                    <th>Lote</th>
+                    <th>Fecha Vencimiento</th>
+                    <th>Cantidad</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+</section>
+
+<!-- ==========================
+     RESULTADOS
+========================== -->
+
+<section id="seccionResultados" class="results">
+
+
+
+
+
+<div class="results-header">
+
+
+<h2>
+Resultados
+</h2>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- BREADCRUMB -->
+
+
+<div id="breadcrumb" class="breadcrumb">
+
+
+<button class="crumb-btn active">
+
+
+<i class="fas fa-house"></i>
+
+Inicio
+
+
+</button>
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- LISTADO PRODUCTOS -->
+
+
+<div id="productList">
+
+
+</div>
+
+
+
+
+
+
+</section>
+
+
+
+
+
+
+
+</main>
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<!-- ==========================
+     MODAL DETALLE PRODUCTO
+========================== -->
+
+
+<div id="modalProducto" class="modal">
+
+
+
+<div class="modal-content">
+
+
+
+<button 
+id="cerrarModal"
+class="cerrar">
+
+
+×
+
+</button>
+
+
+
+
+
+<button type="button" id="btnCopiarDetalle" class="btn-secundario" style="margin:8px 0">📋 Copiar información</button>
+
+<h2 id="detalleNombre">
+
+Producto
+
+</h2>
+
+<div class="detalle-info">
+
+
+<p>
+
+<strong>
+SKU:
+</strong>
+
+<span id="detalleSKU">
+
+</span>
+
+
+</p>
+
+
+
+
+
+
+
+<p>
+
+<strong>
+Proveedor:
+</strong>
+
+
+<span id="detalleProveedor">
+
+</span>
+
+
+</p>
+
+
+
+
+
+
+
+
+<p>
+
+<strong>
+Categoría:
+</strong>
+
+
+<span id="detalleCategoria">
+
+</span>
+
+
+</p>
+
+
+
+
+
+
+
+
+<p>
+
+<strong>
+Stock:
+</strong>
+
+
+<span id="detalleStock">
+
+</span>
+
+
+</p>
+
+<div id="detalleStockBodegas" class="detalle-stock-bodegas" style="display:none"></div>
+
+<p id="detalleFilaUbicacion" style="display:none">
+<strong>Ubicación:</strong>
+<span id="detalleUbicacion"></span>
+</p>
+
+<div id="detalleReferencias" class="detalle-referencias" style="display:none"></div>
+
+
+
+
+
+
+
+
+
+
+<div class="lotes-modal">
+
+<h3>
+LOTES
+</h3>
+
+
+<div id="detalleLotes">
+
+</div>
+
+
+</div>
+
+
+
+
+</div>
+
+
+
+
+
+</div>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+<!-- ==========================
+     SCRIPTS
+========================== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<script src="js/api.js"></script>
+<script src="js/home.js"></script>
+<script src="js/almacen.js"></script>
+<script src="js/movimientos.js"></script>
+<script src="js/vencimientos.js"></script>
+<script src="js/pdf-vencimientos.js"></script>
+
+</body>
+
+
+</html>
