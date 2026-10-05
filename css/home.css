@@ -1362,3 +1362,55 @@ header{
         flex-direction: column;
     }
 }
+
+/* Mejoras de legibilidad para entradas y salidas agrupadas */
+#formEntrada, #formSalida {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+}
+#formEntrada h3, #formSalida h3,
+#listaEntradasPendientes, #listaSalidasPendientes,
+#formEntrada textarea, #formSalida textarea { grid-column: 1 / -1; }
+#listaEntradasPendientes, #listaSalidasPendientes { width: 100%; min-width: 0; overflow-x: auto; }
+.tabla-pendientes { width: 100%; min-width: 620px; border-collapse: collapse; table-layout: auto; }
+.tabla-pendientes th, .tabla-pendientes td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; vertical-align: top; overflow-wrap: anywhere; }
+.tabla-pendientes th { background: #f1f5f9; white-space: nowrap; }
+.btn-secundario-almacen { border: 1px solid #cbd5e1; background: #f8fafc; color: #244b83; border-radius: 8px; padding: 10px 12px; cursor: pointer; font-weight: 600; }
+.campo-lote-nuevo { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr); gap: 10px 14px; align-items: center; padding: 14px; border: 1px dashed #94a3b8; border-radius: 10px; background: #f8fafc; }
+.campo-lote-nuevo[hidden] { display: none !important; }
+@media (max-width: 700px) { #formEntrada, #formSalida { grid-template-columns: minmax(0, 1fr); } #formEntrada h3, #formSalida h3, #listaEntradasPendientes, #listaSalidasPendientes, #formEntrada textarea, #formSalida textarea, .campo-lote-nuevo { grid-column: 1; } .campo-lote-nuevo { grid-template-columns: 1fr; } }
+
+
+/* Tabla de productos pendientes: legible y adaptable */
+.tabla-movimientos-pendientes { width: 100%; min-width: 0; overflow-x: auto; }
+.tabla-pendientes { width: 100%; border-collapse: collapse; table-layout: auto; }
+.tabla-pendientes th, .tabla-pendientes td { padding: 10px 12px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.tabla-pendientes th { white-space: nowrap; background: #f1f5f9; }
+.tabla-pendientes td:nth-child(1) { min-width: 130px; }
+.tabla-pendientes td:nth-child(2) { min-width: 170px; }
+.tabla-pendientes td:nth-child(3) { min-width: 100px; white-space: normal; }
+.tabla-pendientes td:last-child { width: 1%; white-space: nowrap; }
+
+
+/* Refinamiento visual del Centro de Reportes */
+#seccionMovimientos .movimientos-toolbar{background:#f8fbff;border:1px solid #e4ecf7;border-radius:14px;padding:14px 16px;}
+#seccionMovimientos .movimientos-toolbar input[type="date"]{min-width:155px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;color:#243b53;box-shadow:0 2px 6px rgba(15,23,42,.03);}
+#seccionMovimientos #mensajeReporte{color:#64748b;font-size:13px;margin:0 0 0 6px;}
+#seccionMovimientos .grafica-card{border:1px solid #e7eef8;box-shadow:0 12px 30px rgba(15,76,221,.075);}
+#seccionMovimientos .grafica-card h3{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.2px;}
+#seccionMovimientos .grafica-card h3:before{content:"";display:inline-block;width:4px;height:20px;border-radius:4px;background:linear-gradient(180deg,#2563eb,#60a5fa);}
+#seccionMovimientos #btnDescargarExcel{background:linear-gradient(135deg,#168653,#087443);padding:15px 28px;border-radius:13px;box-shadow:0 10px 24px rgba(22,134,83,.22);}
+#seccionMovimientos #btnDescargarExcel:focus-visible{outline:3px solid #93c5fd;outline-offset:3px;}
+@media(max-width:700px){#graficasMovimientos{grid-template-columns:minmax(0,1fr)!important}.movimientos-toolbar{align-items:flex-start}.movimientos-toolbar #mensajeReporte{flex-basis:100%;margin:4px 0 0}}
+
+/* Referencias de materiales en ficha de producto */
+.detalle-referencias { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:12px 0; }
+.referencia-material { border:1px solid #dbe4ef; border-radius:10px; padding:10px; overflow-wrap:anywhere; }
+.referencia-material strong { display:block; margin-bottom:6px; }
+.referencia-material img { border-radius:6px; }
+
+.detalle-stock-bodegas { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; margin:8px 0 12px; }
+.detalle-stock-bodegas > div { background:#f4f8fc; border:1px solid #dbe4ef; border-radius:8px; padding:8px; }

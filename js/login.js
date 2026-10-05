@@ -153,6 +153,13 @@ form.addEventListener("submit", async (e) => {
             localStorage.setItem("qualityNombre", datos.usuario.nombre);
             localStorage.setItem("qualityCargo", datos.usuario.cargo);
             localStorage.setItem("qualityRol", datos.usuario.rol);
+            // Siempre reemplazar el token: si la respuesta no trae uno nuevo,
+            // no se debe conservar el de una sesión anterior (quedaría obsoleto).
+            if (datos.token) {
+                localStorage.setItem("qualityToken", datos.token);
+            } else {
+                localStorage.removeItem("qualityToken");
+            }
 
             if (remember.checked) {
 
