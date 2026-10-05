@@ -480,15 +480,12 @@ console.timeEnd("⏱️ TEGUS + SPS");
                 productosAgrupados.set(
                     sku,
                     {
-
                         ...producto,
-
                         sku: sku,
-
                         stockTotal: 0,
-
+                        stockTGU: 0,
+                        stockSPS: 0,
                         lotes: []
-
                     }
                 );
 
@@ -511,14 +508,27 @@ console.timeEnd("⏱️ TEGUS + SPS");
             );
 
 
-            productoFinal.stockTotal +=
-                isNaN(stockProducto)
-                    ? 0
-                    : stockProducto;
+            const stockSeguro = isNaN(stockProducto) ? 0 : stockProducto;
+            productoFinal.stockTotal += stockSeguro;
 
+            // Materiales/repuestos no manejan lotes: acumular el stock
+            // según la fuente de la que proviene cada registro.
+            const tipoSinLotes =
+                ["material", "repuesto"].includes(String(producto.tipo || "").toLowerCase()) ||
+                ["material", "repuesto"].includes(String(productoFinal.tipo || "").toLowerCase());
+            if (tipoSinLotes) {
+                const bodegaProducto = String(producto.bodega || "Tegus").toUpperCase();
+                if (bodegaProducto === "SPS" || bodegaProducto.includes("SAN PEDRO")) {
+                    productoFinal.stockSPS = (Number(productoFinal.stockSPS) || 0) + stockSeguro;
+                } else {
+                    productoFinal.stockTGU = (Number(productoFinal.stockTGU) || 0) + stockSeguro;
+                }
+                // No crear lotes ficticios para Materiales ni Repuestos.
+                return;
+            }
 
             // ==================================
-            // COPIAR LOTES
+            // COPIAR LOTES DE REACTIVOS
             // ==================================
 
             if (
@@ -824,6 +834,14 @@ function actualizarDashboard(datos) {
 
 }
 
+// Oculta todas las secciones principales antes de abrir la seleccionada.
+function ocultarSeccionesPrincipales() {
+    ["seccionResultados", "seccionAlmacen", "seccionMovimientos", "seccionVencimientos"].forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) elemento.style.display = "none";
+    });
+}
+
 // ========================================
 // MENU
 // ========================================
@@ -834,11 +852,16 @@ function configurarMenu() {
     const menuAlmacen = document.getElementById("menuAlmacen");
     const menuMovimientos = document.getElementById("menuMovimientos");
     const menuVencimientos = document.getElementById("menuVencimientos");
+    const rol = String(localStorage.getItem("qualityRol") || "").trim().toLowerCase();
+    const puedeGestionarAlmacen = ["administrador", "bodega"].includes(rol);
+    if (menuAlmacen) menuAlmacen.style.display = puedeGestionarAlmacen ? "" : "none";
 
     // Productos
     if (menuProductos) {
 
         menuProductos.addEventListener("click", () => {
+            ocultarSeccionesPrincipales();
+            mostrarDashboardCards(true);
             document.getElementById("tituloPagina").textContent = "Productos";
 document.getElementById("subtituloPagina").textContent = "Gestión de inventario y vencimientos";
 
@@ -858,7 +881,13 @@ document.getElementById("subtituloPagina").textContent = "Gestión de inventario
 if (menuAlmacen) {
 
     menuAlmacen.addEventListener("click", () => {
-
+        const rolActual = String(localStorage.getItem("qualityRol") || "").trim().toLowerCase();
+        if (!["administrador", "bodega"].includes(rolActual)) {
+            alert("No tienes permiso para acceder al Almacén.");
+            return;
+        }
+        ocultarSeccionesPrincipales();
+        mostrarDashboardCards(false);
         document.getElementById("tituloPagina").textContent =
             "Almacén";
 
@@ -1230,10 +1259,14 @@ function mostrarDashboardCards(mostrar) {
 
     const movimientos = document.getElementById("seccionMovimientos");
     const vencimientos = document.getElementById("seccionVencimientos");
+    const almacen = document.getElementById("seccionAlmacen");
 
+    // Las tarjetas de Productos nunca se muestran en Almacén, Movimientos ni
+    // Vencimientos (mostrarMarcas() y la recarga tras registrar las reactivaban).
     if (
         (movimientos && movimientos.style.display === "block") ||
-        (vencimientos && vencimientos.style.display === "block")
+        (vencimientos && vencimientos.style.display === "block") ||
+        (almacen && almacen.style.display === "block")
     ) {
 
         dashboard.style.display = "none";
@@ -1290,7 +1323,10 @@ function ejecutarBusqueda(texto) {
     const enVencimientos =
         vencimientos?.style.display === "block";
 
-    if (enMovimientos || enVencimientos) {
+    const enAlmacen =
+        document.getElementById("seccionAlmacen")?.style.display === "block";
+
+    if (enMovimientos || enVencimientos || enAlmacen) {
         return;
     }
 
@@ -1467,7 +1503,128 @@ function textoEstadoLote(estado) {
 }
 
 
+let productoDetalleActual = null;
+
+/** Nombre legible de la bodega (el backend usa "Tegus" y "SPS"). */
+function nombreBodegaVisible(valor) {
+    const v = String(valor || "").trim().toUpperCase();
+    if (v === "SPS" || v.includes("SAN PEDRO")) return "San Pedro Sula";
+    if (v === "TEGUS" || v === "TGU" || v.includes("TEGUCIGALPA")) return "Tegucigalpa";
+    return String(valor || "").trim() || "Tegucigalpa";
+}
+
+function esProductoSinLotes(producto) {
+    const tipo = String((producto && producto.tipo) || "").toLowerCase();
+    return tipo === "material" || tipo === "repuesto";
+}
+
+/**
+ * Existencias por bodega tal como las entrega el backend (stockTGU/stockSPS).
+ * No se reparte ni se supone ninguna cantidad: si el backend no envió el dato
+ * de una bodega, se devuelve null y la pantalla muestra "—".
+ */
+function obtenerStockPorBodega(producto) {
+    const numero = v => {
+        if (v === undefined || v === null || v === "") return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    };
+    return {
+        tgu: numero(producto.stockTGU ?? producto.stockTegucigalpa),
+        sps: numero(producto.stockSPS ?? producto.stockSanPedroSula)
+    };
+}
+
+function textoCantidad(valor) {
+    return valor === null || valor === undefined ? "—" : String(valor);
+}
+
+/**
+ * Texto del portapapeles. NUNCA incluye Referencia 1, Referencia 2 ni
+ * ubicaciones internas (aunque la ficha las muestre).
+ */
+function construirTextoCopia(p) {
+    const lineas = [
+        `Producto: ${p.nombre || "—"}`,
+        `SKU: ${p.sku || "—"}`,
+        `Proveedor: ${p.proveedor || "—"}`,
+        `Categoría: ${p.categoria || "—"}`,
+        `Stock total: ${p.stockTotal ?? 0}`
+    ];
+    if (esProductoSinLotes(p)) {
+        const stock = obtenerStockPorBodega(p);
+        lineas.push(`Tegucigalpa: ${textoCantidad(stock.tgu)}`);
+        lineas.push(`San Pedro Sula: ${textoCantidad(stock.sps)}`);
+    } else {
+        lineas.push("Lotes:", ...(p.lotes || []).map((l, i) =>
+            `  Lote ${i + 1}: ${l.numLote || l.numero || l.lote || "—"} | Bodega: ${nombreBodegaVisible(l.bodega || p.bodega)} | Cantidad: ${l.stock ?? l.cantidad ?? 0} | Vencimiento: ${l.vencimiento || "—"}`));
+    }
+    return lineas.join("\n");
+}
+
+async function copiarDetalleProducto() {
+    const p = productoDetalleActual;
+    if (!p) return;
+    const texto = construirTextoCopia(p);
+    try { await navigator.clipboard.writeText(texto); alert("Información del producto copiada."); }
+    catch (e) { const ta=document.createElement("textarea"); ta.value=texto; document.body.appendChild(ta); ta.select(); const ok=document.execCommand("copy"); ta.remove(); alert(ok ? "Información del producto copiada." : "No se pudo copiar la información."); }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("btnCopiarDetalle");
+    if (btn) btn.addEventListener("click", copiarDetalleProducto);
+});
+
+/** true si el texto es una URL que corresponde a una imagen. */
+function esUrlDeImagen(texto) {
+    if (/^data:image\//i.test(texto)) return true;
+    if (!/^https?:\/\//i.test(texto)) return false;
+    return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(texto)
+        || /^https?:\/\/drive\.google\.com\/(thumbnail|uc)\b/i.test(texto)
+        || /^https?:\/\/[a-z0-9-]+\.googleusercontent\.com\//i.test(texto);
+}
+
+/**
+ * Crea el bloque de UNA referencia (texto, enlace o imagen). Devuelve null si
+ * la referencia está vacía, sin afectar a la otra referencia.
+ */
+function crearBloqueReferencia(titulo, valor) {
+    if (valor === null || valor === undefined) return null;
+    const texto = String(valor).trim();
+    if (!texto) return null;
+
+    const bloque = document.createElement("div");
+    bloque.className = "referencia-material";
+    const etiqueta = document.createElement("strong");
+    etiqueta.textContent = titulo;
+    bloque.appendChild(etiqueta);
+
+    const enlace = () => {
+        const a = document.createElement("a");
+        a.href = texto; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Ver referencia";
+        return a;
+    };
+
+    if (esUrlDeImagen(texto)) {
+        const img = document.createElement("img");
+        img.src = texto; img.alt = titulo; img.loading = "lazy";
+        img.style.maxWidth = "140px"; img.style.maxHeight = "120px";
+        img.style.display = "block"; img.style.objectFit = "contain";
+        // Si la imagen no carga (permisos, enlace roto), ofrecer el enlace.
+        img.onerror = () => { if (/^https?:/i.test(texto)) img.replaceWith(enlace()); else img.remove(); };
+        bloque.appendChild(img);
+    } else if (/^https?:\/\//i.test(texto)) {
+        bloque.appendChild(enlace());
+    } else {
+        const div = document.createElement("div");
+        div.textContent = texto;
+        bloque.appendChild(div);
+    }
+    return bloque;
+}
+
 function verDetalleProducto(producto) {
+    productoDetalleActual = producto;
 
 
     // DATOS PRINCIPALES
@@ -1489,25 +1646,73 @@ function verDetalleProducto(producto) {
 
 
     document.getElementById("detalleStock").textContent =
-        producto.stockTotal || 0;
+        producto.stockTotal ?? 0;
 
+    const esMaterial = esProductoSinLotes(producto);
 
-   
-    // UBICACION
+    // Los bloques existen en home.html; si el navegador conserva un home.html
+    // antiguo en caché, se crean aquí en el mismo orden (stock > bodegas >
+    // ubicación > referencias).
+    const pStock = document.getElementById("detalleStock")?.closest("p");
+    const insertarDespues = (ancla, el) => { if (ancla && ancla.insertAdjacentElement) ancla.insertAdjacentElement("afterend", el); return el; };
 
-    const ubicacion = document.getElementById("detalleUbicacion");
-
-    if (ubicacion) {
-
-        ubicacion.textContent =
-            producto.ubicacion || "No asignada";
-
+    let stockBodegas = document.getElementById("detalleStockBodegas");
+    if (!stockBodegas) {
+        stockBodegas = document.createElement("div");
+        stockBodegas.id = "detalleStockBodegas";
+        stockBodegas.className = "detalle-stock-bodegas";
+        insertarDespues(pStock, stockBodegas);
     }
 
+    let spanUbicacion = document.getElementById("detalleUbicacion");
+    if (!spanUbicacion) {
+        const fila = document.createElement("p");
+        fila.id = "detalleFilaUbicacion";
+        fila.innerHTML = "<strong>Ubicación:</strong> <span id=\"detalleUbicacion\"></span>";
+        insertarDespues(stockBodegas, fila);
+        spanUbicacion = document.getElementById("detalleUbicacion");
+    }
+    const filaUbicacion = spanUbicacion ? spanUbicacion.closest("p") : null;
 
+    let referencias = document.getElementById("detalleReferencias");
+    if (!referencias) {
+        referencias = document.createElement("div");
+        referencias.id = "detalleReferencias";
+        referencias.className = "detalle-referencias";
+        insertarDespues(filaUbicacion || stockBodegas, referencias);
+    }
+
+    // ---- Existencias por bodega (solo Materiales/Repuestos) ----
+    if (esMaterial) {
+        const stock = obtenerStockPorBodega(producto);
+        stockBodegas.innerHTML =
+            `<div><strong>Tegucigalpa:</strong> ${textoCantidad(stock.tgu)}</div>` +
+            `<div><strong>San Pedro Sula:</strong> ${textoCantidad(stock.sps)}</div>`;
+        stockBodegas.style.display = "grid";
+    } else {
+        stockBodegas.innerHTML = "";
+        stockBodegas.style.display = "none";
+    }
+
+    // ---- Ubicación general: solo Materiales. En Reactivos la ubicación
+    //      se muestra dentro de cada lote, no arriba. ----
+    if (filaUbicacion) filaUbicacion.style.display = esMaterial ? "block" : "none";
+    if (spanUbicacion) spanUbicacion.textContent = esMaterial ? (producto.ubicacion || "No asignada") : "";
+
+    // ---- Referencias 1 y 2: solo Materiales; cada una es independiente ----
+    referencias.innerHTML = "";
+    let hayReferencias = false;
+    if (esMaterial) {
+        [["Referencia 1", producto.foto1 ?? producto.ref1 ?? producto.referencia1],
+         ["Referencia 2", producto.foto2 ?? producto.ref2 ?? producto.referencia2]].forEach(([titulo, valor]) => {
+            const bloque = crearBloqueReferencia(titulo, valor);
+            if (bloque) { referencias.appendChild(bloque); hayReferencias = true; }
+        });
+    }
+    referencias.style.display = hayReferencias ? "grid" : "none";
 
     // ==========================
-    // LOTES
+    // LOTES (solo reactivos)
     // Campos reales que envía Code.gs por cada lote:
     // { numero, numLote, stock, vencimiento, alerta }
     // El estado mostrado (texto y color) ya NO depende de "alerta":
@@ -1517,6 +1722,8 @@ function verDetalleProducto(producto) {
 
     const detalleLotes = document.getElementById("detalleLotes");
 
+    const contenedorLotes = detalleLotes ? detalleLotes.closest(".lotes-modal") : null;
+    if (contenedorLotes) contenedorLotes.style.display = esMaterial ? "none" : "block";
     if (detalleLotes) {
 
         detalleLotes.innerHTML = "";
@@ -1532,7 +1739,7 @@ function verDetalleProducto(producto) {
                     : 0;
 
                 const fecha = lote.vencimiento || "Sin fecha";
-                const bodega = lote.bodega || producto.bodega || "Tegus";
+                const bodega = nombreBodegaVisible(lote.bodega || producto.bodega);
 
                     const ubicacionLote =
                     lote.ubicacion ||
@@ -1599,11 +1806,8 @@ function verDetalleProducto(producto) {
 
             });
 
-        } else {
-
-            detalleLotes.innerHTML =
-                "<p>No hay lotes registrados</p>";
-
+        } else if (!esMaterial) {
+            detalleLotes.innerHTML = "<p>No hay lotes registrados</p>";
         }
 
     }
@@ -1680,26 +1884,28 @@ function filtrarLotesPorEstado(estado){
 
 
     contenedor.innerHTML = "";
+    // Migas de pan con acciones reales: "Inicio" vuelve a la lista de marcas
+    // y el filtro actual se puede volver a abrir.
+    rutaActual.marca = "";
+    rutaActual.categoria = "";
+
     const breadcrumb = document.getElementById("breadcrumb");
 
-breadcrumb.innerHTML = `
+    if (breadcrumb) {
 
-<button class="crumb-btn active">
+        breadcrumb.innerHTML = "";
 
-<i class="fas fa-house"></i>
+        crearBotonRuta("🏠 Inicio", () => {
+            mostrarMarcas();
+        });
 
-Inicio
+        agregarSeparador();
 
-</button>
+        crearBotonRuta(textoEstadoLote(estado), () => {
+            filtrarLotesPorEstado(estado);
+        });
 
-
-<button class="crumb-btn filtro-dashboard">
-
-${textoEstadoLote(estado)}
-
-</button>
-
-`;
+    }
 
     const productosFiltrados = inventario.filter(producto => {
 
@@ -1767,6 +1973,7 @@ ${textoEstadoLote(estado)}
 // MOSTRAR MOVIMIENTOS
 // =====================================
 async function mostrarMovimientos() {
+    ocultarSeccionesPrincipales();
     document.getElementById("tituloPagina").textContent = "Centro de Reportes";
 document.getElementById("subtituloPagina").textContent = "Estadísticas y movimientos del inventario";
 
@@ -1789,6 +1996,7 @@ document.getElementById("subtituloPagina").textContent = "Estadísticas y movimi
 
 async function mostrarVencimientos() {
 
+    ocultarSeccionesPrincipales();
     document.getElementById("tituloPagina").textContent =
         "Reporte de Vencimientos";
 
@@ -2086,6 +2294,7 @@ function configurarLogout() {
         if (!confirm("¿Desea cerrar la sesión?")) return;
 
         localStorage.removeItem("qualityUsuario");
+        localStorage.removeItem("qualityToken");
 
         window.location.href = "index.html";
 

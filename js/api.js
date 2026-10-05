@@ -4,7 +4,7 @@
    Optimizada para reducir consultas y mejorar velocidad
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbx1mJrzMF090-C10Ajy4WYrdLgf0r_eGVA3q7GHYXzPfd5FCSrsEp2uXkjkCo29ioyR/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxwvaLVMN4HsuAZAwuv01QST3rbAw4tvUR19l5_rSaeSKDMvad8O8Qls9oxrvKI6fo/exec";
 
 /* ==========================================================
    CONFIGURACIÓN DE CACHÉ
@@ -354,11 +354,26 @@ async function getVencimientos(
 
 async function registrarMovimiento(datos) {
 
+    const token = String(localStorage.getItem("qualityToken") || "").trim();
+
+    // Sin token no hay sesión válida: no tiene sentido llamar al servidor.
+    if (!token) {
+        return {
+            success: false,
+            codigo: "SESION_INVALIDA",
+            message: "Su sesión no es válida o ya venció. Cierre sesión e ingrese nuevamente."
+        };
+    }
+
     const respuesta = await fetch(API_URL, {
         method: "POST",
         body: JSON.stringify({
             action: "registrarMovimiento",
-            ...datos
+            ...datos,
+            // El token de la sesión autenticada siempre prevalece sobre
+            // cualquier propiedad accidental dentro del objeto del movimiento.
+            // El rol NO se envía: el servidor lo consulta en la hoja Usuarios.
+            token: token
         })
     });
 
@@ -367,6 +382,12 @@ async function registrarMovimiento(datos) {
     }
 
     const resultado = await respuesta.json();
+
+    // El servidor indicó que la sesión ya no existe (venció o se reinició la
+    // caché): descartar el token local para no reutilizarlo.
+    if (resultado && resultado.codigo === "SESION_INVALIDA") {
+        localStorage.removeItem("qualityToken");
+    }
 
     // Si se registró correctamente, limpiar datos antiguos
     // para que el inventario se recargue actualizado.

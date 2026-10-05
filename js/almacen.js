@@ -8,6 +8,23 @@
    NORMALIZAR BODEGA
 ========================================== */
 
+/* Materiales/Repuestos: no manejan lotes. Se mueven por existencia de bodega. */
+const LOTE_SIN_LOTE = "SIN_LOTE";
+
+function esProductoSinLoteAlmacen(producto) {
+    const tipo = String((producto && producto.tipo) || "").toLowerCase();
+    return tipo === "material" || tipo === "repuesto";
+}
+
+function stockMaterialBodega(producto, bodega) {
+    const b = normalizarBodega(bodega);
+    const valor = b === "SPS"
+        ? producto?.stockSPS
+        : (producto?.stockTGU ?? producto?.stockTotal);
+    const n = Number(valor);
+    return Number.isFinite(n) ? n : 0;
+}
+
 function normalizarBodega(bodega) {
 
     const valor = String(bodega || "")
@@ -244,9 +261,10 @@ function cargarProductosAlmacen(
             );
 
 
-        /* Si el producto no tiene lotes en esta bodega */
+        /* Si el producto no tiene lotes en esta bodega (los materiales no
+           tienen lotes y siempre se ofrecen) */
 
-        if (lotesBodega.length === 0) return;
+        if (lotesBodega.length === 0 && !esProductoSinLoteAlmacen(producto)) return;
 
 
         /* Obtener SKU */
@@ -374,8 +392,10 @@ function obtenerProductoPorTexto(
             return false;
         }
 
-        /* Confirmar que tenga lotes en la bodega */
+        /* Confirmar que tenga lotes en la bodega (los materiales no tienen) */
         if (bodega) {
+
+            if (esProductoSinLoteAlmacen(producto)) return true;
 
             return (producto.lotes || []).some(lote =>
                 obtenerBodegaLote(
@@ -426,6 +446,13 @@ function cargarLotesDesdeInput(
     selectLote.innerHTML =
         '<option value="">Seleccione un lote</option>';
 
+    // El botón "+ Lote nuevo" solo aplica a reactivos.
+    const botonLoteNuevo = idLote === "entradaLote"
+        ? document.getElementById("btnLoteNuevo")
+        : null;
+
+    if (botonLoteNuevo) botonLoteNuevo.style.display = "";
+
     if (!bodega) return;
 
     const producto =
@@ -435,6 +462,28 @@ function cargarLotesDesdeInput(
         );
 
     if (!producto) return;
+
+    if (esProductoSinLoteAlmacen(producto)) {
+
+        selectLote.innerHTML =
+            `<option value="${LOTE_SIN_LOTE}">Sin lote | Stock en bodega: ${stockMaterialBodega(producto, bodega)}</option>`;
+
+        selectLote.value = LOTE_SIN_LOTE;
+
+        if (botonLoteNuevo) botonLoteNuevo.style.display = "none";
+
+        if (idLote === "entradaLote") alternarCamposLoteNuevo(false);
+
+        const skuMat = String(producto.sku || producto.codigo || "").trim();
+        const nombreMat = String(producto.nombre || producto.producto || "").trim();
+        const valorMat = String(inputProducto.value || "").trim();
+
+        if (skuMat && (valorMat === skuMat || valorMat.toLowerCase() === nombreMat.toLowerCase())) {
+            inputProducto.value = `${skuMat} - ${nombreMat}`;
+        }
+
+        return;
+    }
 
 
     /* Completar automáticamente SKU + nombre */
@@ -497,13 +546,20 @@ function cargarLotesDesdeInput(
 
         option.value = numeroLote;
 
+        const vencimientoLote = lote.vencimiento || lote.vence || lote.fechaVencimiento || "";
+        const textoVencimiento = vencimientoLote
+            ? ` | Vence: ${new Date(vencimientoLote).toLocaleDateString("es-HN")}`
+            : "";
         option.textContent =
-            `${numeroLote} | Stock: ${stock}`;
+            `${numeroLote} | Stock: ${stock}${textoVencimiento}`;
 
         selectLote.appendChild(option);
 
     });
 
+
+    // El alta de lotes nuevos se hace únicamente con el botón #btnLoteNuevo.
+    // No agregar una segunda opción dentro del desplegable.
 
     console.log(
         `Lotes encontrados para ${sku} en ${bodega}:`,
@@ -818,335 +874,149 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 /* ==========================================
-   REGISTRAR ENTRADA
+   MOVIMIENTOS AGRUPADOS POR DOCUMENTO
 ========================================== */
+const entradasPendientes = [];
+const salidasPendientes = [];
 
-document.addEventListener("click", async event => {
+function buscarProductoAlmacen(texto, bodega) {
+    return obtenerProductoPorTexto(texto, bodega);
+}
+function resolverNombreProducto(producto) {
+    return String(producto?.nombre || producto?.producto || producto?.descripcion || producto?.name || producto?.descripcionProducto || '').trim();
+}
+function actualizarProductoDesdeSku(tipo) {
+    const prefijo = tipo === 'entrada' ? 'entrada' : 'salida';
+    const bodega = document.getElementById(prefijo + 'Bodega')?.value || '';
+    const sku = document.getElementById(prefijo + 'Sku')?.value.trim() || '';
+    const producto = buscarProductoAlmacen(sku, bodega);
+    document.getElementById(prefijo + 'Producto').value = producto ? String(producto.sku || producto.codigo || producto.code || sku) : '';
+    document.getElementById(prefijo + 'Nombre').value = producto ? resolverNombreProducto(producto) : '';
+    cargarLotesDesdeInput(prefijo + 'Producto', prefijo + 'Bodega', prefijo + 'Lote');
+}
+function alternarCamposLoteNuevo(mostrar) {
+    const campos = document.getElementById('camposLoteNuevo');
+    const fecha = document.getElementById('entradaVencimiento');
+    const numero = document.getElementById('entradaNuevoLote');
+    if (campos) campos.hidden = !mostrar;
+    if (!mostrar) { if (fecha) fecha.value = ''; if (numero) numero.value = ''; }
+}
 
-    const boton =
-        event.target.closest("#btnRegistrarEntrada");
-
-    if (!boton) return;
-
-
-    const bodega =
-        document.getElementById(
-            "entradaBodega"
-        )?.value || "";
-
-    const productoTexto =
-        document.getElementById(
-            "entradaProducto"
-        )?.value || "";
-
-    const producto =
-        obtenerSkuProducto(
-            productoTexto,
-            bodega
-        );
-
-    const lote =
-        document.getElementById(
-            "entradaLote"
-        )?.value || "";
-
-    const cantidad =
-        Number(
-            document.getElementById(
-                "entradaCantidad"
-            )?.value
-        );
-
-    const observacion =
-        document.getElementById(
-            "entradaObservacion"
-        )?.value || "";
-
-
-    if (!bodega) {
-
-        alert("Seleccione la bodega.");
-        return;
-
+document.addEventListener('change', e => {
+    if (e.target?.id === 'entradaLote') {
+        const nuevo = e.target.value === '__NUEVO_LOTE__';
+        alternarCamposLoteNuevo(nuevo);
+        if (nuevo) document.getElementById('entradaNuevoLote')?.focus();
     }
-
-
-    if (!producto || !lote || cantidad <= 0) {
-
-        alert(
-            "Complete producto, lote y cantidad."
-        );
-
-        return;
-
-    }
-
-
-    try {
-
-        boton.disabled = true;
-        boton.textContent = "Registrando...";
-
-
-        const resultado =
-            await registrarMovimiento({
-
-                tipo: "entrada",
-
-                bodega:
-                    normalizarBodega(bodega),
-
-                producto,
-                lote,
-                cantidad,
-                observacion
-
-            });
-
-
-        if (resultado.success) {
-
-            alert(
-                "Entrada registrada correctamente."
-            );
-
-
-            document.getElementById(
-                "entradaCantidad"
-            ).value = "";
-
-            document.getElementById(
-                "entradaObservacion"
-            ).value = "";
-
-
-            limpiarCacheAPI();
-
-
-            if (
-                typeof cargarInventarioCompleto ===
-                "function"
-            ) {
-
-                await cargarInventarioCompleto();
-
-            }
-
-
-            cargarProductosAlmacen(
-                bodega,
-                "listaProductosEntrada"
-            );
-
-            cargarLotesDesdeInput(
-                "entradaProducto",
-                "entradaBodega",
-                "entradaLote"
-            );
-
-        } else {
-
-            alert(
-                resultado.message ||
-                "No fue posible registrar la entrada."
-            );
-
-        }
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Error al registrar la entrada."
-        );
-
-    } finally {
-
-        boton.disabled = false;
-        boton.textContent =
-            "Registrar entrada";
-
-    }
-
 });
-
-
-/* ==========================================
-   REGISTRAR SALIDA
-========================================== */
-
-document.addEventListener("click", async event => {
-
-    const boton =
-        event.target.closest("#btnRegistrarSalida");
-
-    if (!boton) return;
-
-
-    const cliente =
-        document.getElementById(
-            "salidaCliente"
-        )?.value.trim() || "";
-
-    const bodega =
-        document.getElementById(
-            "salidaBodega"
-        )?.value || "";
-
-    const productoTexto =
-        document.getElementById(
-            "salidaProducto"
-        )?.value || "";
-
-    const producto =
-        obtenerSkuProducto(
-            productoTexto,
-            bodega
-        );
-
-    const lote =
-        document.getElementById(
-            "salidaLote"
-        )?.value || "";
-
-    const cantidad =
-        Number(
-            document.getElementById(
-                "salidaCantidad"
-            )?.value
-        );
-
-    const observacion =
-        document.getElementById(
-            "salidaObservacion"
-        )?.value || "";
-
-
-    if (!cliente) {
-
-        alert(
-            "Ingrese el nombre del cliente."
-        );
-
-        return;
-
+document.addEventListener('click', e => {
+    if (e.target.closest('#btnLoteNuevo')) {
+        const select = document.getElementById('entradaLote');
+        if (select) select.value = '__NUEVO_LOTE__';
+        alternarCamposLoteNuevo(true);
+        document.getElementById('entradaNuevoLote')?.focus();
     }
-
-
-    if (!bodega) {
-
-        alert(
-            "Seleccione la bodega."
-        );
-
-        return;
-
-    }
-
-
-    if (!producto || !lote || cantidad <= 0) {
-
-        alert(
-            "Complete producto, lote y cantidad."
-        );
-
-        return;
-
-    }
-
-
-    try {
-
-        boton.disabled = true;
-        boton.textContent = "Registrando...";
-
-
-        const resultado =
-            await registrarMovimiento({
-
-                tipo: "salida",
-
-                cliente,
-
-                bodega:
-                    normalizarBodega(bodega),
-
-                producto,
-                lote,
-                cantidad,
-                observacion
-
-            });
-
-
-        if (resultado.success) {
-
-            alert(
-                "Salida registrada correctamente."
-            );
-
-
-            document.getElementById(
-                "salidaCliente"
-            ).value = "";
-
-            document.getElementById(
-                "salidaCantidad"
-            ).value = "";
-
-            document.getElementById(
-                "salidaObservacion"
-            ).value = "";
-
-
-            limpiarCacheAPI();
-
-
-            if (
-                typeof cargarInventarioCompleto ===
-                "function"
-            ) {
-
-                await cargarInventarioCompleto();
-
-            }
-
-
-            cargarProductosAlmacen(
-                bodega,
-                "listaProductosSalida"
-            );
-
-            cargarLotesDesdeInput(
-                "salidaProducto",
-                "salidaBodega",
-                "salidaLote"
-            );
-
-        } else {
-
-            alert(
-                resultado.message ||
-                "No fue posible registrar la salida."
-            );
-
-        }
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Error al registrar la salida."
-        );
-
-    } finally {
-
-        boton.disabled = false;
-        boton.textContent =
-            "Registrar salida";
-
-    }
-
 });
+alternarCamposLoteNuevo(false);
+
+['entrada','salida'].forEach(tipo => {
+    document.addEventListener('change', e => {
+        if (e.target?.id === tipo + 'Sku') actualizarProductoDesdeSku(tipo);
+        if (e.target?.id === tipo + 'Bodega') {
+            const sku = document.getElementById(tipo + 'Sku');
+            if (sku) actualizarProductoDesdeSku(tipo);
+            cargarProductosAlmacen(e.target.value, tipo === 'entrada' ? 'listaProductosEntrada' : 'listaProductosSalida');
+        }
+    });
+    document.addEventListener('input', e => {
+        if (e.target?.id === tipo + 'Sku') actualizarProductoDesdeSku(tipo);
+    });
+});
+function pintarLista(tipo) {
+    const lista = tipo === 'entrada' ? entradasPendientes : salidasPendientes;
+    const cont = document.getElementById(tipo === 'entrada' ? 'listaEntradasPendientes' : 'listaSalidasPendientes');
+    if (!cont) return;
+    if (!lista.length) { cont.innerHTML = '<p>No hay productos agregados.</p>'; return; }
+    cont.innerHTML = `<table class="tabla-pendientes"><thead><tr><th>SKU</th><th>Producto</th><th>Lote</th><th>Cantidad</th><th>Vencimiento</th><th></th></tr></thead><tbody>${lista.map((x,i)=>`<tr><td>${escapeHtmlAlmacen(x.producto)}</td><td>${escapeHtmlAlmacen(x.nombre)}</td><td>${x.lote === LOTE_SIN_LOTE ? 'Sin lote' : escapeHtmlAlmacen(x.lote)}</td><td>${x.cantidad}</td><td>${escapeHtmlAlmacen(x.vencimiento || '—')}</td><td><button type="button" data-quitar="${i}" data-tipo="${tipo}">Quitar</button></td></tr>`).join('')}</tbody></table>`;
+}
+function escapeHtmlAlmacen(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+document.addEventListener('click', async event => {
+    const quitar = event.target.closest('[data-quitar]');
+    if (quitar) { const arr = quitar.dataset.tipo === 'entrada' ? entradasPendientes : salidasPendientes; arr.splice(Number(quitar.dataset.quitar),1); pintarLista(quitar.dataset.tipo); return; }
+    const agregarEntrada = event.target.closest('#btnAgregarEntrada');
+    const agregarSalida = event.target.closest('#btnAgregarSalida');
+    if (agregarEntrada || agregarSalida) {
+        const tipo = agregarEntrada ? 'entrada' : 'salida';
+        const pref = tipo;
+        const bodega = document.getElementById(pref+'Bodega').value;
+        const skuIngresado = document.getElementById(pref+'Sku')?.value.trim() || '';
+        const skuCampo = document.getElementById(pref+'Producto')?.value.trim() || '';
+        const sku = obtenerSkuProducto(skuCampo || skuIngresado, bodega) || skuCampo || skuIngresado;
+        const selectLote = document.getElementById(pref+'Lote');
+        let lote = selectLote?.value || '';
+        const camposNuevo = document.getElementById('camposLoteNuevo');
+        const numeroLoteNuevo = document.getElementById('entradaNuevoLote')?.value.trim() || '';
+        // El botón puede mostrar los campos aunque el select no conserve su valor.
+        const prodSinLote = esProductoSinLoteAlmacen(buscarProductoAlmacen(sku, bodega));
+        if (prodSinLote) lote = LOTE_SIN_LOTE;
+        const loteNuevo = !prodSinLote && tipo === 'entrada' && (
+            lote === '__NUEVO_LOTE__' ||
+            (camposNuevo && !camposNuevo.hidden && numeroLoteNuevo.length > 0)
+        );
+        const prod = loteNuevo ? obtenerProductoPorTexto(sku, '') : buscarProductoAlmacen(sku, bodega);
+        const cantidad = Number(document.getElementById(pref+'Cantidad').value);
+        if (loteNuevo) lote = numeroLoteNuevo;
+        if (!bodega || !sku || !prod || !lote || !(cantidad > 0)) { alert('Complete bodega, SKU válido, lote y cantidad antes de agregar.'); return; }
+        const nombre = resolverNombreProducto(prod) || document.getElementById(pref+'Nombre').value;
+        const arr = tipo === 'entrada' ? entradasPendientes : salidasPendientes;
+        const vencimiento = tipo === 'entrada' && loteNuevo ? (document.getElementById('entradaVencimiento')?.value || '') : '';
+        if (loteNuevo && !numeroLoteNuevo) { alert('Ingrese el número del lote nuevo.'); return; }
+        if (loteNuevo && !vencimiento) { alert('Indique el vencimiento del lote nuevo.'); return; }
+        arr.push({tipo,bodega:normalizarBodega(bodega),producto:sku,nombre,lote,cantidad,vencimiento,loteNuevo});
+        pintarLista(tipo);
+        document.getElementById(pref+'Sku').value=''; document.getElementById(pref+'Producto').value=''; document.getElementById(pref+'Nombre').value=''; document.getElementById(pref+'Cantidad').value='';
+        if (tipo === 'entrada') { alternarCamposLoteNuevo(false); document.getElementById('entradaLote').value=''; }
+        return;
+    }
+    const boton = event.target.closest('#btnRegistrarEntrada, #btnRegistrarSalida');
+    if (!boton) return;
+    const tipo = boton.id === 'btnRegistrarEntrada' ? 'entrada' : 'salida';
+    const arr = tipo === 'entrada' ? entradasPendientes : salidasPendientes;
+    const pref = tipo;
+    const bodega = normalizarBodega(document.getElementById(pref+'Bodega').value);
+    const documento = document.getElementById(pref+'Documento').value.trim();
+    const cliente = tipo === 'salida' ? document.getElementById('salidaCliente').value.trim() : '';
+    const observacion = document.getElementById(pref+'Observacion').value.trim();
+    if (!bodega || !documento || !arr.length || (tipo === 'salida' && !cliente)) { alert(`Complete bodega, número de ${tipo === 'entrada' ? 'traslado' : 'factura'}${tipo === 'salida' ? ' y cliente' : ''}, y agregue al menos un producto.`); return; }
+    // Validar stock localmente antes de enviar salidas.
+    if (tipo === 'salida') {
+        for (const item of arr) {
+            const prod = buscarProductoAlmacen(item.producto, bodega);
+            if (esProductoSinLoteAlmacen(prod)) {
+                if (stockMaterialBodega(prod, bodega) < item.cantidad) { alert(`Existencia insuficiente para SKU ${item.producto} en la bodega seleccionada (disponible: ${stockMaterialBodega(prod, bodega)}). No se registró la factura.`); return; }
+                continue;
+            }
+            const lot = (prod?.lotes || []).find(l => obtenerNumeroLote(l) === item.lote);
+            if (!lot || obtenerStockLote(lot) < item.cantidad) { alert(`Existencia insuficiente para SKU ${item.producto}, lote ${item.lote}. No se registró la factura.`); return; }
+        }
+    }
+    boton.disabled = true; const textoOriginal = boton.textContent; boton.textContent = 'Registrando...';
+    try {
+        // Cada movimiento conserva el documento compartido en la observación y el historial individual.
+        const advertencias = [];
+        for (const item of arr) {
+            const resultado = await registrarMovimiento({...item, tipo, bodega, cliente, documento, factura: documento, observacion: `${observacion || ''}`, vencimiento:item.vencimiento || ''});
+            if (!resultado?.success) throw new Error(resultado?.message || `No se pudo registrar SKU ${item.producto}`);
+            if (resultado.advertencia) advertencias.push(`SKU ${item.producto}: ${resultado.advertencia}`);
+        }
+        alert(`${tipo === 'entrada' ? 'Entrada' : 'Salida'} registrada correctamente para ${documento}.` + (advertencias.length ? `\n\nATENCIÓN:\n${advertencias.join('\n')}` : ''));
+        arr.length = 0; pintarLista(tipo);
+        document.getElementById(pref+'Observacion').value='';
+        if (tipo === 'salida') document.getElementById('salidaCliente').value='';
+        document.getElementById(pref+'Documento').value='';
+        limpiarCacheAPI(); if (typeof cargarInventarioCompleto === 'function') await cargarInventarioCompleto();
+        cargarProductosAlmacen(bodega, tipo === 'entrada' ? 'listaProductosEntrada' : 'listaProductosSalida');
+    } catch (error) { console.error(error); alert(`No se completó el registro: ${error.message || 'error inesperado'}. Revisa el historial antes de reintentar, porque los movimientos anteriores podrían haberse procesado.`); }
+    finally { boton.disabled=false; boton.textContent=textoOriginal; }
+});
+pintarLista('entrada'); pintarLista('salida');

@@ -274,17 +274,15 @@ Inventario
         <option value="Tegus">Tegucigalpa</option>
         <option value="SPS">San Pedro Sula</option>
         </select>
-        <!-- PRODUCTO -->
-        <label for="entradaProducto">Producto</label>
+        <label for="entradaDocumento">Número de traslado</label>
+        <input type="text" id="entradaDocumento" placeholder="Número de traslado" autocomplete="off">
 
-        <input
-            type="text"
-            id="entradaProducto"
-            list="listaProductosEntrada"
-            placeholder="Escriba código o nombre del producto"
-            autocomplete="off">
-
+        <label for="entradaSku">Código del producto (SKU)</label>
+        <input type="text" id="entradaSku" list="listaProductosEntrada" placeholder="Ingrese SKU" autocomplete="off">
         <datalist id="listaProductosEntrada"></datalist>
+        <label for="entradaNombre">Nombre del producto</label>
+        <input type="text" id="entradaNombre" readonly placeholder="Se completa al seleccionar el SKU">
+        <input type="hidden" id="entradaProducto">
 
 
         <!-- LOTE -->
@@ -293,6 +291,13 @@ Inventario
         <select id="entradaLote">
             <option value="">Seleccione un lote</option>
         </select>
+        <button id="btnLoteNuevo" type="button" class="btn-secundario-almacen">+ Lote nuevo</button>
+        <div id="camposLoteNuevo" class="campo-lote-nuevo" hidden>
+            <label for="entradaNuevoLote">Número del lote nuevo</label>
+            <input type="text" id="entradaNuevoLote" placeholder="Ingrese el número del lote" autocomplete="off">
+            <label for="entradaVencimiento">Fecha de vencimiento</label>
+            <input type="date" id="entradaVencimiento">
+        </div>
 
 
         <!-- CANTIDAD -->
@@ -304,6 +309,9 @@ Inventario
             min="1"
             placeholder="Ingrese la cantidad">
 
+
+        <button id="btnAgregarEntrada" type="button">Agregar producto a la lista</button>
+        <div id="listaEntradasPendientes" class="tabla-movimientos-pendientes"></div>
 
         <!-- OBSERVACIÓN -->
         <label for="entradaObservacion">Observación</label>
@@ -351,17 +359,15 @@ Inventario
         <option value="Tegus">Tegucigalpa</option>
         <option value="SPS">San Pedro Sula</option>
         </select>
-        <!-- PRODUCTO -->
-        <label for="salidaProducto">Producto</label>
+        <label for="salidaDocumento">Número de factura</label>
+        <input type="text" id="salidaDocumento" placeholder="Número de factura" autocomplete="off">
 
-        <input
-            type="text"
-            id="salidaProducto"
-            list="listaProductosSalida"
-            placeholder="Escriba código o nombre del producto"
-            autocomplete="off">
-
+        <label for="salidaSku">Código del producto (SKU)</label>
+        <input type="text" id="salidaSku" list="listaProductosSalida" placeholder="Ingrese SKU" autocomplete="off">
         <datalist id="listaProductosSalida"></datalist>
+        <label for="salidaNombre">Nombre del producto</label>
+        <input type="text" id="salidaNombre" readonly placeholder="Se completa al seleccionar el SKU">
+        <input type="hidden" id="salidaProducto">
 
 
         <!-- LOTE -->
@@ -381,6 +387,9 @@ Inventario
             min="1"
             placeholder="Ingrese la cantidad">
 
+
+        <button id="btnAgregarSalida" type="button">Agregar producto a la lista</button>
+        <div id="listaSalidasPendientes" class="tabla-movimientos-pendientes"></div>
 
         <!-- OBSERVACIÓN -->
         <label for="salidaObservacion">Observación</label>
@@ -502,7 +511,7 @@ id="fechaMovimientos">
 
         <i class="fas fa-file-excel"></i>
 
-        Descargar reporte del día
+        Descargar PDF de salidas
 
     </button>
 
@@ -793,6 +802,8 @@ class="cerrar">
 
 
 
+<button type="button" id="btnCopiarDetalle" class="btn-secundario" style="margin:8px 0">📋 Copiar información</button>
+
 <h2 id="detalleNombre">
 
 Producto
@@ -877,22 +888,24 @@ Stock:
 
 </p>
 
+<div id="detalleStockBodegas" class="detalle-stock-bodegas" style="display:none"></div>
 
-
-
-
-
-
-
-
-<p>
-<strong>
-Ubicación:
-</strong>
-
+<p id="detalleFilaUbicacion" style="display:none">
+<strong>Ubicación:</strong>
 <span id="detalleUbicacion"></span>
-
 </p>
+
+<div id="detalleReferencias" class="detalle-referencias" style="display:none"></div>
+
+
+
+
+
+
+
+
+
+
 <div class="lotes-modal">
 
 <h3>
