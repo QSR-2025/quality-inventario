@@ -1,4 +1,4 @@
-const CACHE_NAME = "quality-inventario-v9";
+const CACHE_NAME = "quality-inventario-v11";
 
 const FILES = [
     "./",
@@ -11,8 +11,13 @@ const FILES = [
 
     "./js/api.js",
     "./js/login.js",
+    "./js/session.js",
     "./js/home.js",
+    "./js/almacen.js",
     "./js/movimientos.js",
+    "./js/vencimientos.js",
+    "./js/pdf-vencimientos.js",
+    "./js/ui.js",
 
     "./assets/logo.png",
     "./assets/icon-192.png",

@@ -1000,23 +1000,50 @@ document.addEventListener('click', async event => {
             if (!lot || obtenerStockLote(lot) < item.cantidad) { alert(`Existencia insuficiente para SKU ${item.producto}, lote ${item.lote}. No se registró la factura.`); return; }
         }
     }
-    boton.disabled = true; const textoOriginal = boton.textContent; boton.textContent = 'Registrando...';
+    boton.disabled = true; const textoOriginal = boton.innerHTML;
+    const total = arr.length;
+    const TAMANO_LOTE = 25; // productos por solicitud: rápido y muy por debajo del límite de 6 min del servidor
+    let registrados = 0;
     try {
-        // Cada movimiento conserva el documento compartido en la observación y el historial individual.
         const advertencias = [];
-        for (const item of arr) {
-            const resultado = await registrarMovimiento({...item, tipo, bodega, cliente, documento, factura: documento, observacion: `${observacion || ''}`, vencimiento:item.vencimiento || ''});
-            if (!resultado?.success) throw new Error(resultado?.message || `No se pudo registrar SKU ${item.producto}`);
-            if (resultado.advertencia) advertencias.push(`SKU ${item.producto}: ${resultado.advertencia}`);
+        const comunes = { tipo, bodega, cliente, documento, factura: documento, observacion: `${observacion || ''}` };
+        while (arr.length) {
+            const bloque = arr.slice(0, TAMANO_LOTE);
+            boton.textContent = `Registrando ${registrados + 1}-${registrados + bloque.length} de ${total}...`;
+            if (typeof registrarActividad === 'function') registrarActividad(); // una operación larga cuenta como actividad
+            const resultado = await registrarMovimientosLote(
+                comunes,
+                bloque.map(i => ({ producto: i.producto, lote: i.lote, cantidad: i.cantidad, vencimiento: i.vencimiento || '' }))
+            );
+            // Quitar de la lista los productos que el servidor YA procesó, para que
+            // un reintento no los registre dos veces.
+            const hechos = Math.min(Number(resultado?.procesados) || (resultado?.success ? bloque.length : 0), bloque.length);
+            arr.splice(0, hechos);
+            registrados += hechos;
+            if (resultado?.advertencia) advertencias.push(resultado.advertencia);
+            pintarLista(tipo);
+            if (!resultado?.success) {
+                const e = new Error(resultado?.message || 'No se pudo registrar el movimiento');
+                e.parcial = registrados > 0;
+                throw e;
+            }
         }
-        alert(`${tipo === 'entrada' ? 'Entrada' : 'Salida'} registrada correctamente para ${documento}.` + (advertencias.length ? `\n\nATENCIÓN:\n${advertencias.join('\n')}` : ''));
-        arr.length = 0; pintarLista(tipo);
+        alert(`${tipo === 'entrada' ? 'Entrada' : 'Salida'} registrada correctamente para ${documento} (${registrados} producto${registrados === 1 ? '' : 's'}).` + (advertencias.length ? `\n\nATENCIÓN:\n${[...new Set(advertencias)].join('\n')}` : ''));
         document.getElementById(pref+'Observacion').value='';
         if (tipo === 'salida') document.getElementById('salidaCliente').value='';
         document.getElementById(pref+'Documento').value='';
-        limpiarCacheAPI(); if (typeof cargarInventarioCompleto === 'function') await cargarInventarioCompleto();
+        // Refrescar existencias sin hacer esperar al usuario.
+        if (typeof actualizarInventario === 'function') actualizarInventario({ forzar: false, silencioso: true });
         cargarProductosAlmacen(bodega, tipo === 'entrada' ? 'listaProductosEntrada' : 'listaProductosSalida');
-    } catch (error) { console.error(error); alert(`No se completó el registro: ${error.message || 'error inesperado'}. Revisa el historial antes de reintentar, porque los movimientos anteriores podrían haberse procesado.`); }
-    finally { boton.disabled=false; boton.textContent=textoOriginal; }
+    } catch (error) {
+        console.error(error);
+        const quedan = arr.length;
+        const errorDeRed = error instanceof TypeError || /^HTTP/.test(String(error.message || ''));
+        alert(`No se completó el registro: ${error.message || 'error inesperado'}.` +
+            (errorDeRed ? '\n\nLa conexión se interrumpió: es posible que el servidor sí haya procesado esta tanda. Revise el reporte de Movimientos antes de reintentar.' : '') +
+            (registrados > 0 ? `\n\nYa se registraron ${registrados} producto(s). En la lista quedan ${quedan} pendiente(s): corrija el problema y vuelva a presionar Registrar (los ya registrados no se repetirán).` : '\n\nNo se registró ningún producto de esta lista.'));
+        if (registrados > 0 && typeof actualizarInventario === 'function') actualizarInventario({ forzar: false, silencioso: true });
+    }
+    finally { boton.disabled=false; boton.innerHTML=textoOriginal; }
 });
 pintarLista('entrada'); pintarLista('salida');

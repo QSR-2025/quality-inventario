@@ -15,6 +15,9 @@
 
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="css/login.css">
 
 <link rel="stylesheet"
@@ -29,16 +32,26 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <!-- Panel izquierdo -->
         <section class="welcome-panel">
 
-            <img src="assets/logo.png" alt="Quality" class="company-logo">
+            <div class="welcome-content">
 
-            <h1>QUALITY INVENTARIO</h1>
+                <img src="assets/logo.png" alt="Quality" class="company-logo">
 
-            <h2>Sistemas y Reactivos</h2>
+                <h1>QUALITY INVENTARIO</h1>
 
-            <p>
-                Consulta el inventario en tiempo real de productos,
-                reactivos y equipos desde cualquier dispositivo.
-            </p>
+                <h2>Sistemas y Reactivos</h2>
+
+                <p>
+                    Consulta el inventario en tiempo real de productos,
+                    reactivos y equipos desde cualquier dispositivo.
+                </p>
+
+                <ul class="welcome-features">
+                    <li><i class="fas fa-boxes-stacked"></i> Existencias por bodega y lote</li>
+                    <li><i class="fas fa-calendar-xmark"></i> Control de vencimientos</li>
+                    <li><i class="fas fa-right-left"></i> Registro de entradas y salidas</li>
+                </ul>
+
+            </div>
 
         </section>
 
@@ -46,6 +59,8 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <section class="login-panel">
 
             <div class="login-card">
+
+                <img src="assets/logo.png" alt="" class="card-logo">
 
                 <h3>Iniciar sesión</h3>
 
@@ -61,11 +76,18 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
                             Usuario
                         </label>
 
-                        <input
-                            type="text"
-                            id="usuario"
-                            placeholder="Ingrese su usuario"
-                            required>
+                        <div class="field">
+
+                            <i class="fas fa-user field-icon"></i>
+
+                            <input
+                                type="text"
+                                id="usuario"
+                                placeholder="Ingrese su usuario"
+                                autocomplete="username"
+                                required>
+
+                        </div>
 
                     </div>
 
@@ -75,12 +97,15 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
                             Contraseña
                         </label>
 
-                        <div class="password-container">
+                        <div class="password-container field">
+
+                            <i class="fas fa-lock field-icon"></i>
 
                             <input
                                 type="password"
                                 id="password"
                                 placeholder="Ingrese su contraseña"
+                                autocomplete="current-password"
                                 required>
 
                             <button
@@ -89,7 +114,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
                                 class="toggle-password"
                                 aria-label="Mostrar contraseña">
 
-                                👁
+                                <i class="fas fa-eye"></i>
 
                             </button>
 
@@ -152,7 +177,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
                     </p>
 
                     <span>
-                        Versión 1.0
+                        Versión 2.0
                     </span>
 
                 </footer>

@@ -23,6 +23,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     cargarSesion();
 
+    // Mensaje cuando la sesión se cerró automáticamente por inactividad.
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("motivo") === "inactividad") {
+        mostrarMensaje(
+            "Su sesión se cerró automáticamente por 7 minutos de inactividad. Inicie sesión nuevamente.",
+            "#b45309"
+        );
+        history.replaceState(null, "", window.location.pathname);
+    }
+
 });
 
 
@@ -33,23 +44,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 togglePassword.addEventListener("click", () => {
 
+    const visible = password.type === "password";
 
-    if (password.type === "password") {
+    password.type = visible ? "text" : "password";
 
+    togglePassword.innerHTML = visible
+        ? '<i class="fas fa-eye-slash"></i>'
+        : '<i class="fas fa-eye"></i>';
 
-        password.type = "text";
-        togglePassword.textContent = "🙈";
-
-
-    } else {
-
-
-        password.type = "password";
-        togglePassword.textContent = "👁";
-
-
-    }
-
+    togglePassword.setAttribute(
+        "aria-label",
+        visible ? "Ocultar contraseña" : "Mostrar contraseña"
+    );
 
 });
 
@@ -149,6 +155,7 @@ form.addEventListener("submit", async (e) => {
         if (datos.success) {
 
 
+            localStorage.setItem("qualityUltimaActividad", String(Date.now()));
             localStorage.setItem("qualityUsuario", datos.usuario.usuario);
             localStorage.setItem("qualityNombre", datos.usuario.nombre);
             localStorage.setItem("qualityCargo", datos.usuario.cargo);

@@ -9,7 +9,11 @@
 
 <title>Quality Inventario</title>
 
+<meta name="theme-color" content="#0b5ed7">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="css/home.css">
 
 
@@ -53,35 +57,41 @@ Inventario
 
 </div>
 
+<p class="nav-label">Menú principal</p>
+
 <nav>
 
 
-<a id="menuProductos">
+<a id="menuProductos" class="active">
     <i class="fas fa-boxes-stacked"></i>
-    Productos
+    <span>Productos</span>
 </a>
 
 <a id="menuAlmacen">
     <i class="fas fa-right-left"></i>
-    Almacén
+    <span>Almacén</span>
 </a>
 
 <a id="menuMovimientos">
     <i class="fas fa-clock-rotate-left"></i>
-    Movimientos
+    <span>Movimientos</span>
 </a>
 
 <a id="menuVencimientos">
     <i class="fas fa-calendar-xmark"></i>
-    Vencimientos
+    <span>Vencimientos</span>
 </a>
 <a>
     <i class="fas fa-gear"></i>
-    Configuración
+    <span>Configuración</span>
 </a>
 
 </nav>
 
+<div class="sidebar-footer">
+    Quality Sistemas y Reactivos
+    <small>Versión 2.0</small>
+</div>
 
 
 </aside>
@@ -130,6 +140,8 @@ Inventario
 
 <div class="user">
 
+    <div class="avatar" id="avatarUsuario">U</div>
+
     <div class="user-info">
 
         <span>Bienvenido</span>
@@ -138,7 +150,7 @@ Inventario
 
     </div>
 
-    <button id="logout">
+    <button id="logout" type="button" title="Cerrar sesión" aria-label="Cerrar sesión">
 
         <i class="fas fa-right-from-bracket"></i>
 
@@ -264,68 +276,81 @@ Inventario
 
     <div id="formEntrada" class="form-almacen">
 
-        <h3>Registrar entrada</h3>
+        <h3><i class="fas fa-arrow-right-to-bracket"></i> Registrar entrada</h3>
 
-        <!-- BODEGA -->
-        <label for="entradaBodega">Bodega</label>
-
-        <select id="entradaBodega">
-        <option value="">Seleccione una bodega</option>
-        <option value="Tegus">Tegucigalpa</option>
-        <option value="SPS">San Pedro Sula</option>
-        </select>
-        <label for="entradaDocumento">Número de traslado</label>
-        <input type="text" id="entradaDocumento" placeholder="Número de traslado" autocomplete="off">
-
-        <label for="entradaSku">Código del producto (SKU)</label>
-        <input type="text" id="entradaSku" list="listaProductosEntrada" placeholder="Ingrese SKU" autocomplete="off">
-        <datalist id="listaProductosEntrada"></datalist>
-        <label for="entradaNombre">Nombre del producto</label>
-        <input type="text" id="entradaNombre" readonly placeholder="Se completa al seleccionar el SKU">
-        <input type="hidden" id="entradaProducto">
-
-
-        <!-- LOTE -->
-        <label for="entradaLote">Lote</label>
-
-        <select id="entradaLote">
-            <option value="">Seleccione un lote</option>
-        </select>
-        <button id="btnLoteNuevo" type="button" class="btn-secundario-almacen">+ Lote nuevo</button>
-        <div id="camposLoteNuevo" class="campo-lote-nuevo" hidden>
-            <label for="entradaNuevoLote">Número del lote nuevo</label>
-            <input type="text" id="entradaNuevoLote" placeholder="Ingrese el número del lote" autocomplete="off">
-            <label for="entradaVencimiento">Fecha de vencimiento</label>
-            <input type="date" id="entradaVencimiento">
+        <div class="campo">
+            <label for="entradaBodega">Bodega</label>
+            <select id="entradaBodega">
+                <option value="">Seleccione una bodega</option>
+                <option value="Tegus">Tegucigalpa</option>
+                <option value="SPS">San Pedro Sula</option>
+            </select>
         </div>
 
+        <div class="campo">
+            <label for="entradaDocumento">Número de traslado</label>
+            <input type="text" id="entradaDocumento" placeholder="Número de traslado" autocomplete="off">
+        </div>
 
-        <!-- CANTIDAD -->
-        <label for="entradaCantidad">Cantidad</label>
+        <div class="campo">
+            <label for="entradaSku">Código del producto (SKU)</label>
+            <input type="text" id="entradaSku" list="listaProductosEntrada" placeholder="Ingrese SKU" autocomplete="off">
+            <datalist id="listaProductosEntrada"></datalist>
+        </div>
 
-        <input
-            type="number"
-            id="entradaCantidad"
-            min="1"
-            placeholder="Ingrese la cantidad">
+        <div class="campo">
+            <label for="entradaNombre">Nombre del producto</label>
+            <input type="text" id="entradaNombre" readonly placeholder="Se completa al seleccionar el SKU">
+            <input type="hidden" id="entradaProducto">
+        </div>
 
+        <div class="campo">
+            <label for="entradaLote">Lote</label>
+            <select id="entradaLote">
+                <option value="">Seleccione un lote</option>
+            </select>
+            <button id="btnLoteNuevo" type="button" class="btn-secundario-almacen"><i class="fas fa-plus"></i> Lote nuevo</button>
+        </div>
 
-        <button id="btnAgregarEntrada" type="button">Agregar producto a la lista</button>
+        <div class="campo">
+            <label for="entradaCantidad">Cantidad</label>
+            <input
+                type="number"
+                id="entradaCantidad"
+                min="1"
+                placeholder="Ingrese la cantidad">
+        </div>
+
+        <div id="camposLoteNuevo" class="campo-lote-nuevo" hidden>
+            <div class="campo">
+                <label for="entradaNuevoLote">Número del lote nuevo</label>
+                <input type="text" id="entradaNuevoLote" placeholder="Ingrese el número del lote" autocomplete="off">
+            </div>
+            <div class="campo">
+                <label for="entradaVencimiento">Fecha de vencimiento</label>
+                <input type="date" id="entradaVencimiento">
+            </div>
+        </div>
+
+        <div class="acciones-form">
+            <button id="btnAgregarEntrada" type="button" class="btn-agregar"><i class="fas fa-circle-plus"></i> Agregar producto a la lista</button>
+        </div>
+
         <div id="listaEntradasPendientes" class="tabla-movimientos-pendientes"></div>
 
-        <!-- OBSERVACIÓN -->
-        <label for="entradaObservacion">Observación</label>
+        <div class="campo campo-completo">
+            <label for="entradaObservacion">Observación</label>
+            <textarea
+                id="entradaObservacion"
+                placeholder="Observación opcional"></textarea>
+        </div>
 
-        <textarea
-            id="entradaObservacion"
-            placeholder="Observación opcional"></textarea>
-
-
-        <!-- BOTÓN -->
-        <button id="btnRegistrarEntrada" type="button">
-            <i class="fas fa-plus"></i>
-            Registrar entrada
-        </button>
+        <div class="acciones-form acciones-final">
+            <button id="btnRegistrarEntrada" type="button" class="btn-registrar">
+                <i class="fas fa-check"></i>
+                Registrar entrada
+            </button>
+        </div>
 
     </div>
 
@@ -338,72 +363,78 @@ Inventario
          class="form-almacen"
          style="display:none;">
 
-        <h3>Registrar salida</h3>
+        <h3><i class="fas fa-arrow-right-from-bracket"></i> Registrar salida</h3>
 
+        <div class="campo">
+            <label for="salidaCliente">Cliente</label>
+            <input
+                type="text"
+                id="salidaCliente"
+                placeholder="Ingrese el nombre del cliente"
+                autocomplete="off">
+        </div>
 
-        <!-- CLIENTE -->
-        <label for="salidaCliente">Cliente</label>
+        <div class="campo">
+            <label for="salidaBodega">Bodega</label>
+            <select id="salidaBodega">
+                <option value="">Seleccione una bodega</option>
+                <option value="Tegus">Tegucigalpa</option>
+                <option value="SPS">San Pedro Sula</option>
+            </select>
+        </div>
 
-        <input
-            type="text"
-            id="salidaCliente"
-            placeholder="Ingrese el nombre del cliente"
-            autocomplete="off">
+        <div class="campo">
+            <label for="salidaDocumento">Número de factura</label>
+            <input type="text" id="salidaDocumento" placeholder="Número de factura" autocomplete="off">
+        </div>
 
+        <div class="campo">
+            <label for="salidaSku">Código del producto (SKU)</label>
+            <input type="text" id="salidaSku" list="listaProductosSalida" placeholder="Ingrese SKU" autocomplete="off">
+            <datalist id="listaProductosSalida"></datalist>
+        </div>
 
-        <!-- BODEGA -->
-        <label for="salidaBodega">Bodega</label>
+        <div class="campo">
+            <label for="salidaNombre">Nombre del producto</label>
+            <input type="text" id="salidaNombre" readonly placeholder="Se completa al seleccionar el SKU">
+            <input type="hidden" id="salidaProducto">
+        </div>
 
-        <select id="salidaBodega">
-        <option value="">Seleccione una bodega</option>
-        <option value="Tegus">Tegucigalpa</option>
-        <option value="SPS">San Pedro Sula</option>
-        </select>
-        <label for="salidaDocumento">Número de factura</label>
-        <input type="text" id="salidaDocumento" placeholder="Número de factura" autocomplete="off">
+        <div class="campo">
+            <label for="salidaLote">Lote</label>
+            <select id="salidaLote">
+                <option value="">Seleccione un lote</option>
+            </select>
+        </div>
 
-        <label for="salidaSku">Código del producto (SKU)</label>
-        <input type="text" id="salidaSku" list="listaProductosSalida" placeholder="Ingrese SKU" autocomplete="off">
-        <datalist id="listaProductosSalida"></datalist>
-        <label for="salidaNombre">Nombre del producto</label>
-        <input type="text" id="salidaNombre" readonly placeholder="Se completa al seleccionar el SKU">
-        <input type="hidden" id="salidaProducto">
+        <div class="campo">
+            <label for="salidaCantidad">Cantidad</label>
+            <input
+                type="number"
+                id="salidaCantidad"
+                min="1"
+                placeholder="Ingrese la cantidad">
+        </div>
 
+        <div class="acciones-form">
+            <button id="btnAgregarSalida" type="button" class="btn-agregar"><i class="fas fa-circle-plus"></i> Agregar producto a la lista</button>
+        </div>
 
-        <!-- LOTE -->
-        <label for="salidaLote">Lote</label>
-
-        <select id="salidaLote">
-            <option value="">Seleccione un lote</option>
-        </select>
-
-
-        <!-- CANTIDAD -->
-        <label for="salidaCantidad">Cantidad</label>
-
-        <input
-            type="number"
-            id="salidaCantidad"
-            min="1"
-            placeholder="Ingrese la cantidad">
-
-
-        <button id="btnAgregarSalida" type="button">Agregar producto a la lista</button>
         <div id="listaSalidasPendientes" class="tabla-movimientos-pendientes"></div>
 
-        <!-- OBSERVACIÓN -->
-        <label for="salidaObservacion">Observación</label>
+        <div class="campo campo-completo">
+            <label for="salidaObservacion">Observación</label>
+            <textarea
+                id="salidaObservacion"
+                placeholder="Observación opcional"></textarea>
+        </div>
 
-        <textarea
-            id="salidaObservacion"
-            placeholder="Observación opcional"></textarea>
-
-
-        <!-- BOTÓN -->
-        <button id="btnRegistrarSalida" type="button">
-            <i class="fas fa-minus"></i>
-            Registrar salida
-        </button>
+        <div class="acciones-form acciones-final">
+            <button id="btnRegistrarSalida" type="button" class="btn-registrar">
+                <i class="fas fa-check"></i>
+                Registrar salida
+            </button>
+        </div>
 
     </div>
 
@@ -505,7 +536,7 @@ id="fechaMovimientos">
 
 </div>
 
-<div style="text-align:center;margin-top:30px;">
+<div class="acciones-centro">
 
     <button id="btnDescargarExcel">
 
@@ -686,11 +717,16 @@ Reporte de Vencimientos
 
 <div class="results-header">
 
-
 <h2>
 Resultados
 </h2>
 
+<div class="results-actions">
+<span id="estadoActualizacion" class="estado-actualizacion"></span>
+<button id="btnActualizarInventario" class="btn-actualizar" type="button" title="Volver a cargar las existencias desde el inventario">
+<i class="fa-solid fa-rotate"></i> Actualizar
+</button>
+</div>
 
 </div>
 
@@ -802,7 +838,7 @@ class="cerrar">
 
 
 
-<button type="button" id="btnCopiarDetalle" class="btn-secundario" style="margin:8px 0">📋 Copiar información</button>
+<button type="button" id="btnCopiarDetalle" class="btn-secundario"><i class="fas fa-copy"></i> Copiar información</button>
 
 <h2 id="detalleNombre">
 
@@ -953,12 +989,14 @@ LOTES
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
+<script src="js/session.js"></script>
 <script src="js/api.js"></script>
 <script src="js/home.js"></script>
 <script src="js/almacen.js"></script>
 <script src="js/movimientos.js"></script>
 <script src="js/vencimientos.js"></script>
 <script src="js/pdf-vencimientos.js"></script>
+<script src="js/ui.js"></script>
 
 </body>
 

@@ -10,6 +10,9 @@
 let inventario = [];
 
 
+// Estado del filtro de tarjetas (Vigente, Por vencer...) para poder refrescar la misma vista.
+let filtroEstadoActivo = "";
+
 let rutaActual = {
 
     marca: "",
@@ -195,68 +198,11 @@ async function cargarInicio() {
             inventario.length
         );
 
-        if (datos?.resumen) {
-
-            const resumen = datos.resumen;
-
-            const elTotal =
-                document.getElementById("totalProductos");
-
-            if (elTotal)
-                elTotal.textContent =
-                    resumen.total ?? inventario.length;
-
-            const elStockBajo =
-                document.getElementById("stockBajo");
-
-            if (elStockBajo)
-                elStockBajo.textContent =
-                    resumen.stockBajo ?? 0;
-
-            const elPorVencer =
-                document.getElementById("porVencer");
-
-            if (elPorVencer)
-                elPorVencer.textContent =
-                    resumen.porVencer ?? 0;
-
-            const elMarcas =
-                document.getElementById("marcas");
-
-            if (elMarcas)
-                elMarcas.textContent =
-                    resumen.marcas ?? 0;
-
-            const elVigentes =
-                document.getElementById("lotesVigentes");
-
-            if (elVigentes)
-                elVigentes.textContent =
-                    resumen.lotesVigentes ?? 0;
-
-            const elPorVencerLotes =
-                document.getElementById("lotesPorVencer");
-
-            if (elPorVencerLotes)
-                elPorVencerLotes.textContent =
-                    resumen.lotesPorVencer ?? 0;
-
-            const elUrgentes =
-                document.getElementById("lotesUrgentes");
-
-            if (elUrgentes)
-                elUrgentes.textContent =
-                    resumen.lotesUrgentes ?? 0;
-
-            const elVencidos =
-                document.getElementById("lotesVencidos");
-
-            if (elVencidos)
-                elVencidos.textContent =
-                    resumen.lotesVencidos ?? 0;
-        }
+        pintarResumenInicio(datos?.resumen);
 
         mostrarMarcas();
+
+        marcarInventarioActualizado();
 
     } catch (error) {
 
@@ -930,6 +876,8 @@ if (menuAlmacen) {
 // ========================================
 function mostrarMarcas() {
 
+    filtroEstadoActivo = "";
+
     rutaActual.marca = "";
     rutaActual.categoria = "";
 
@@ -962,7 +910,7 @@ function mostrarMarcas() {
 
         div.innerHTML = `
             <div class="product-info">
-                <h3>📁 ${marca}</h3>
+                <h3><i class="fas fa-folder"></i> ${marca}</h3>
                 <p>${cantidad} productos</p>
             </div>
 
@@ -990,6 +938,8 @@ function mostrarMarcas() {
 
 }
 function mostrarCategorias(marca) {
+
+    filtroEstadoActivo = "";
 
     rutaActual.marca = marca;
     rutaActual.categoria = "";
@@ -1031,7 +981,7 @@ function mostrarCategorias(marca) {
 
         div.innerHTML = `
             <div class="product-info">
-                <h3>📂 ${categoria}</h3>
+                <h3><i class="fas fa-folder-open"></i> ${categoria}</h3>
                 <p>${cantidad} productos</p>
             </div>
 
@@ -1066,6 +1016,8 @@ function mostrarCategorias(marca) {
 
 
 function mostrarProductos(marca, categoria) {
+
+    filtroEstadoActivo = "";
 
     rutaActual.marca = marca;
     rutaActual.categoria = categoria;
@@ -1782,15 +1734,15 @@ function verDetalleProducto(producto) {
 
                     <div class="lote-footer">
 
-                        <span>🏢 ${bodega}</span>
+                        <span><i class="fas fa-warehouse"></i> ${bodega}</span>
 
-                        <span>📍 ${ubicacionLote}</span>
+                        <span><i class="fas fa-location-dot"></i> ${ubicacionLote}</span>
 
                     </div>
 
                     <div class="lote-footer">
 
-                        <span>📅 ${fecha}</span>
+                        <span><i class="fas fa-calendar-days"></i> ${fecha}</span>
 
                         <span class="estado-lote estado-${estado}">
                        ${estadoLote}
@@ -1875,6 +1827,8 @@ document.querySelectorAll(".dashboard-filter")
 // =====================================
 
 function filtrarLotesPorEstado(estado){
+
+    filtroEstadoActivo = estado;
 
 
     mostrarDashboardCards(false);
@@ -2293,10 +2247,13 @@ function configurarLogout() {
 
         if (!confirm("¿Desea cerrar la sesión?")) return;
 
-        localStorage.removeItem("qualityUsuario");
-        localStorage.removeItem("qualityToken");
-
-        window.location.href = "index.html";
+        if (typeof cerrarSesionLocal === "function") {
+            cerrarSesionLocal();
+        } else {
+            localStorage.removeItem("qualityUsuario");
+            localStorage.removeItem("qualityToken");
+            window.location.href = "index.html";
+        }
 
     });
 
@@ -2340,3 +2297,212 @@ function llenarTablaVencimientos(productos){
     });
 
 }
+
+
+/* ==========================================================
+   ACTUALIZACIÓN DEL INVENTARIO (manual y automática)
+   - Botón "Actualizar" en Productos.
+   - Cada cierto tiempo, y al volver a la pestaña, se refrescan las
+     existencias sin recargar la página ni perder la vista actual.
+========================================================== */
+
+const AUTO_ACTUALIZAR_MS = 5 * 60 * 1000;      // refresco automático cada 5 min
+const REVISION_AUTO_MS = 60 * 1000;            // se revisa cada minuto
+const FORZAR_LECTURA_TRAS_MS = 60 * 60 * 1000; // tras 1 h (o cambio de día) se lee directo de las hojas
+
+let actualizandoInventario = false;
+let ultimaActualizacionInventario = Date.now();
+let diaUltimaActualizacion = new Date().toDateString();
+
+/** Muestra en las tarjetas del inicio los totales calculados por el servidor. */
+function pintarResumenInicio(resumen) {
+
+    if (!resumen) return;
+
+    const poner = (id, valor) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = valor;
+    };
+
+    poner("totalProductos", resumen.total ?? inventario.length);
+    poner("stockBajo", resumen.stockBajo ?? 0);
+    poner("porVencer", resumen.porVencer ?? 0);
+    poner("marcas", resumen.marcas ?? 0);
+    poner("lotesVigentes", resumen.lotesVigentes ?? 0);
+    poner("lotesPorVencer", resumen.lotesPorVencer ?? 0);
+    poner("lotesUrgentes", resumen.lotesUrgentes ?? 0);
+    poner("lotesVencidos", resumen.lotesVencidos ?? 0);
+}
+
+function marcarInventarioActualizado() {
+
+    ultimaActualizacionInventario = Date.now();
+    diaUltimaActualizacion = new Date().toDateString();
+
+    const estado = document.getElementById("estadoActualizacion");
+
+    if (estado) {
+        const ahora = new Date();
+        estado.textContent = "Actualizado " +
+            String(ahora.getHours()).padStart(2, "0") + ":" +
+            String(ahora.getMinutes()).padStart(2, "0");
+    }
+}
+
+function hayModalAbierto() {
+    return Array.from(document.querySelectorAll(".modal")).some(m =>
+        m.style.display === "flex" || m.style.display === "block"
+    );
+}
+
+/** Vuelve a dibujar lo que el usuario estaba viendo con los datos nuevos. */
+function refrescarVistaActual() {
+
+    const resultados = document.getElementById("seccionResultados");
+
+    // Solo se redibuja la pantalla de Productos; Almacén, Movimientos y
+    // Vencimientos no se tocan (los datos nuevos quedan en memoria).
+    if (!resultados || resultados.style.display === "none") return;
+
+    const texto = String(document.getElementById("buscador")?.value || "").trim().toLowerCase();
+
+    if (texto) {
+        ejecutarBusqueda(texto);
+    } else if (filtroEstadoActivo) {
+        filtrarLotesPorEstado(filtroEstadoActivo);
+    } else if (rutaActual.categoria) {
+        mostrarProductos(rutaActual.marca, rutaActual.categoria);
+    } else if (rutaActual.marca) {
+        mostrarCategorias(rutaActual.marca);
+    } else {
+        mostrarMarcas();
+    }
+}
+
+/** Valida la respuesta del servidor y la aplica a la pantalla. */
+function aplicarDatosInicio(datos) {
+
+    if (!Array.isArray(datos?.productos)) {
+        throw new Error(datos?.mensaje || "Respuesta no válida del servidor");
+    }
+
+    // Si llega una lista vacía y ya había productos, se conserva lo anterior.
+    if (!datos.productos.length && inventario.length) {
+        throw new Error("El servidor devolvió el inventario vacío");
+    }
+
+    inventario = datos.productos;
+
+    construirIndicesInventario();
+    pintarResumenInicio(datos.resumen);
+    refrescarVistaActual();
+
+    if (typeof cargarProductosAlmacen === "function") {
+        cargarProductosAlmacen();
+    }
+
+    marcarInventarioActualizado();
+}
+
+async function actualizarInventario({ forzar = true, silencioso = false } = {}) {
+
+    if (actualizandoInventario) return false;
+
+    actualizandoInventario = true;
+
+    const boton = document.getElementById("btnActualizarInventario");
+    const estado = document.getElementById("estadoActualizacion");
+
+    if (boton) {
+        boton.disabled = true;
+        boton.classList.add("actualizando");
+    }
+
+    if (estado && !silencioso) estado.textContent = "Actualizando...";
+
+    try {
+
+        limpiarCacheAPI();
+
+        if (forzar && !silencioso) {
+
+            // FASE 1 (instantánea): copia guardada en el servidor. El usuario
+            // ve datos casi al momento en vez de esperar la lectura completa.
+            const inicio = Date.now();
+
+            const rapido = await obtenerInicio(false);
+
+            aplicarDatosInicio(rapido);
+
+            // Si el servidor tuvo que leer las hojas (no había copia), ya
+            // son datos frescos y no hace falta repetir la lectura.
+            if (Date.now() - inicio < 4000) {
+
+                // FASE 2 (en segundo plano): leer las hojas para captar
+                // cambios hechos a mano directamente en Google Sheets.
+                if (estado) estado.textContent = "Sincronizando con las hojas...";
+
+                try {
+                    aplicarDatosInicio(await obtenerInicio(true));
+                } catch (errorFase2) {
+                    console.warn("Sincronización completa no disponible:", errorFase2);
+                    if (estado) estado.textContent = "Mostrando última copia guardada";
+                }
+            }
+
+        } else {
+
+            aplicarDatosInicio(await obtenerInicio(forzar));
+
+        }
+
+        return true;
+
+    } catch (error) {
+
+        console.error("Error actualizando inventario:", error);
+
+        if (estado) estado.textContent = "No se pudo actualizar";
+
+        if (!silencioso) {
+            alert("No se pudo actualizar el inventario: " + (error.message || error));
+        }
+
+        return false;
+
+    } finally {
+
+        actualizandoInventario = false;
+
+        if (boton) {
+            boton.disabled = false;
+            boton.classList.remove("actualizando");
+        }
+    }
+}
+
+function revisarAutoActualizacion() {
+
+    if (document.visibilityState === "hidden") return;
+    if (actualizandoInventario || hayModalAbierto()) return;
+
+    const edad = Date.now() - ultimaActualizacionInventario;
+    const cambioDeDia = new Date().toDateString() !== diaUltimaActualizacion;
+
+    if (!cambioDeDia && edad < AUTO_ACTUALIZAR_MS) return;
+
+    actualizarInventario({
+        forzar: cambioDeDia || edad >= FORZAR_LECTURA_TRAS_MS,
+        silencioso: true
+    });
+}
+
+document.addEventListener("click", evento => {
+    if (evento.target.closest && evento.target.closest("#btnActualizarInventario")) {
+        actualizarInventario({ forzar: true });
+    }
+});
+
+setInterval(revisarAutoActualizacion, REVISION_AUTO_MS);
+document.addEventListener("visibilitychange", revisarAutoActualizacion);
+window.addEventListener("focus", revisarAutoActualizacion);
