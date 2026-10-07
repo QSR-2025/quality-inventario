@@ -50,7 +50,7 @@ function cargarGraficas(resumen) {
     if (chartEntradas) chartEntradas.destroy();
     chartEntradas = new Chart(ctxDona, {
         type:'doughnut',
-        data:{labels:['Entradas','Salidas'],datasets:[{data:[resumen.entradas,resumen.salidas],backgroundColor:['#2563eb','#f59e0b'],hoverOffset:10,borderWidth:0,spacing:3}]},
+        data:{labels:['Entradas','Salidas'],datasets:[{data:[resumen.entradas,resumen.salidas],backgroundColor:['#16a765','#e5484d'],hoverOffset:10,borderWidth:0,spacing:3}]},
         options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:22,boxWidth:8,font:{size:12,weight:'600'}}},tooltip:{padding:12,cornerRadius:10}},animation:{duration:650}}
     });
     if (chartProductos) chartProductos.destroy();
@@ -109,8 +109,8 @@ async function generarReportePDF() {
             pagina();
             doc.setFillColor(232,240,254); doc.roundedRect(14,y,182,8,1.5,1.5,'F');
             doc.setTextColor(18,63,145); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text(grupo,17,y+5.5); y+=10;
-            const filas = porGrupo[grupo].map(m => [m.fecha || fecha, m.usuario || '—', m.producto || '—', m.sku || '—', m.lote || '—', String(m.cantidad ?? Math.abs(Number(m.stockNuevo||0)-Number(m.stockAnterior||0))), m.observacion || '—']);
-            doc.autoTable({startY:y,head:[['Fecha','Usuario','Producto','SKU','Lote','Cantidad','Observación']],body:filas,theme:'grid',styles:{fontSize:7.5,cellPadding:2,overflow:'linebreak',textColor:[51,65,85],lineColor:[226,232,240]},headStyles:{fillColor:[37,99,235],textColor:[255,255,255],fontStyle:'bold'},alternateRowStyles:{fillColor:[248,250,252]},columnStyles:{0:{cellWidth:20},1:{cellWidth:25},2:{cellWidth:49},3:{cellWidth:20},4:{cellWidth:22},5:{cellWidth:17},6:{cellWidth:29}},margin:{left:14,right:14},didDrawPage:()=>{doc.setFontSize(8);doc.setTextColor(120);doc.text('Quality Inventario · Reporte de movimientos',14,290);}});
+            const filas = porGrupo[grupo].map(m => [m.fecha || fecha, m.usuario || '—', m.producto || '—', m.sku || '—', m.lote || '—', String(m.cantidad ?? Math.abs(Number(m.stockNuevo||0)-Number(m.stockAnterior||0)))]);
+            doc.autoTable({startY:y,head:[['Fecha','Usuario','Producto','SKU','Lote','Cantidad']],body:filas,theme:'grid',styles:{fontSize:7.5,cellPadding:2,overflow:'linebreak',textColor:[51,65,85],lineColor:[226,232,240]},headStyles:{fillColor:[37,99,235],textColor:[255,255,255],fontStyle:'bold'},alternateRowStyles:{fillColor:[248,250,252]},columnStyles:{0:{cellWidth:23},1:{cellWidth:28},2:{cellWidth:61},3:{cellWidth:23},4:{cellWidth:25},5:{cellWidth:18}},margin:{left:14,right:14},didDrawPage:()=>{doc.setFontSize(8);doc.setTextColor(120);doc.text('Quality Inventario · Reporte de movimientos',14,290);}});
             y = doc.lastAutoTable.finalY + 7;
         });
     };

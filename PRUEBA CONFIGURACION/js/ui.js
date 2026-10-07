@@ -5,41 +5,53 @@
 ========================================================== */
 
 document.addEventListener("DOMContentLoaded", () => {
-    const nombre = (localStorage.getItem("qualityNombre") || "").trim() ||
-                   (localStorage.getItem("qualityUsuario") || "").trim() || "Usuario";
+
+    /* ---------- Usuario ---------- */
+
+    const nombre =
+        (localStorage.getItem("qualityNombre") || "").trim() ||
+        (localStorage.getItem("qualityUsuario") || "").trim() ||
+        "Usuario";
+
     const etiqueta = document.getElementById("nombreUsuario");
+    const avatar = document.getElementById("avatarUsuario");
+
     if (etiqueta) etiqueta.textContent = nombre;
 
-    // Sincroniza foto/inicial del encabezado con la foto de Configuración.
-    actualizarAvatarQI();
+    if (avatar) {
+        avatar.textContent = nombre.charAt(0).toUpperCase();
+        avatar.title = (localStorage.getItem("qualityCargo") || "").trim();
+    }
 
-    // Navegación visual: el elemento activo siempre coincide con la sección abierta.
+    /* ---------- Menú lateral: opción activa ---------- */
+
     const enlaces = document.querySelectorAll(".sidebar nav a");
+
     enlaces.forEach(enlace => {
+
         enlace.addEventListener("click", () => {
-            enlaces.forEach(item => item.classList.toggle("active", item === enlace));
-            const esProductos = enlace.id === "menuProductos";
-            document.body.classList.toggle("qi-page-products", esProductos);
-            // En Configuración ocultamos las secciones de inventario y mostramos la propia.
+
             if (enlace.id === "menuConfiguracion") {
-                ["seccionResultados", "seccionAlmacen", "seccionMovimientos", "seccionVencimientos", "dashboardCards"].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = "none";
-                });
+                document.querySelectorAll("#seccionResultados,#seccionAlmacen,#seccionMovimientos,#seccionVencimientos,#dashboardCards").forEach(el => { if (el) el.style.display = "none"; });
                 const seccion = document.getElementById("seccionConfiguracion");
                 if (seccion) seccion.style.display = "block";
-                const titulo = document.getElementById("tituloPagina");
-                if (titulo) titulo.textContent = "Configuración";
-                const subtitulo = document.getElementById("subtituloPagina");
-                if (subtitulo) subtitulo.textContent = "Personaliza tu experiencia en Quality Inventario";
+                const titulo = document.getElementById("tituloPagina"); if (titulo) titulo.textContent = "Configuración";
+                const subtitulo = document.getElementById("subtituloPagina"); if (subtitulo) subtitulo.textContent = "Personaliza tu experiencia en Quality Inventario";
                 pintarDatosCuenta();
+                return;
             }
+            if (!enlace.id) return;
+
+            // Almacén puede rechazar el acceso por rol; en ese caso no se marca.
+            enlaces.forEach(a => a.classList.remove("active"));
+            enlace.classList.add("active");
+
         });
+
     });
 
-    // La vista inicial es Productos, por eso es la única pestaña con buscador.
-    document.body.classList.add("qi-page-products");
 });
+
 
 function pintarDatosCuenta(){
  const nombre=localStorage.getItem('qualityNombre')||'—', usuario=localStorage.getItem('qualityUsuario')||'—', cargo=localStorage.getItem('qualityCargo')||'—', rol=localStorage.getItem('qualityRol')||'—';
@@ -47,29 +59,12 @@ function pintarDatosCuenta(){
  const cont=document.getElementById('datosCuenta'); if(cont) cont.innerHTML=campos.map(([k,v])=>`<div class="account-field"><label>${k}</label><div class="account-value"><span></span><i class="fas fa-lock"></i></div></div>`).join('');
  if(cont) [...cont.children].forEach((el,i)=>el.querySelector('span').textContent=campos[i][1]);
 }
-function actualizarAvatarQI(){
- const foto=localStorage.getItem('qualityFotoPerfil');
- const nombre=(localStorage.getItem('qualityNombre')||localStorage.getItem('qualityUsuario')||'U').trim();
- const avatar=document.getElementById('avatarUsuario');
- if(!avatar) return;
- let img=avatar.querySelector('img.qi-avatar-image');
- if(foto){
-   if(!img){img=document.createElement('img');img.className='qi-avatar-image';img.alt='Foto de perfil';avatar.replaceChildren(img);}
-   if(img.src!==foto) img.src=foto;
-   avatar.classList.add('avatar-con-foto');
- }else{
-   if(img) img.remove();
-   avatar.classList.remove('avatar-con-foto');
-   avatar.textContent=nombre.charAt(0).toUpperCase()||'U';
- }
-}
 function aplicarPreferenciasQI(){
  const prefs=JSON.parse(localStorage.getItem('qualityPreferencias')||'{}'); document.body.classList.toggle('qi-dark',prefs.theme==='dark'); document.body.classList.remove('qi-font-small','qi-font-medium','qi-font-large');document.body.classList.add('qi-font-'+(prefs.fontSize||'medium'));document.body.style.fontFamily=`"${prefs.font||'Inter'}", sans-serif`;
- document.querySelectorAll('[data-theme]').forEach(b=>{b.classList.toggle('selected',b.dataset.theme===(prefs.theme||'light'));const marca=b.querySelector('b');if(marca)marca.textContent=b.classList.contains('selected')?'◉':'○'});
+ document.querySelectorAll('[data-theme]').forEach(b=>{b.classList.toggle('selected',b.dataset.theme===(prefs.theme||'light'));b.querySelector('b').textContent=b.classList.contains('selected')?'◉':'○'});
  document.querySelectorAll('[data-font-size]').forEach(b=>b.classList.toggle('selected',b.dataset.fontSize===(prefs.fontSize||'medium')));
  const fuente=document.getElementById('fuenteSistema');if(fuente)fuente.value=prefs.font||'Inter';
- const foto=localStorage.getItem('qualityFotoPerfil');const av=document.getElementById('fotoPerfilPreview');if(av){if(foto){av.style.backgroundImage=`url("${foto}")`;av.textContent=''}else{av.style.backgroundImage='';av.textContent=(localStorage.getItem('qualityNombre')||'U').trim().charAt(0).toUpperCase()}}
- actualizarAvatarQI();
+ const foto=localStorage.getItem('qualityFotoPerfil');const av=document.getElementById('fotoPerfilPreview');if(av){if(foto){av.style.backgroundImage=`url(${foto})`;av.textContent=''}else{av.style.backgroundImage='';av.textContent=(localStorage.getItem('qualityNombre')||'U').trim().charAt(0).toUpperCase()}}
 }
 document.addEventListener('DOMContentLoaded',()=>{
  const prefs=()=>JSON.parse(localStorage.getItem('qualityPreferencias')||'{}');

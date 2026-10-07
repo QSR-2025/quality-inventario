@@ -4,7 +4,7 @@
    Optimizada para reducir consultas y mejorar velocidad
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwSGGphLlpJCViJj-IW4L_ErU4IcnzXhqx7CTH80bYsBuk9s3yfaeKDOUUnAbctZSmK/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbykaiyOHBusJlJghoXMEygYKpdluTmMjlFQEX1cV-If2kXKElENYg8LxSBwC0dgoud8/exec";
 
 /* ==========================================================
    CONFIGURACIÓN DE CACHÉ
@@ -361,8 +361,8 @@ async function postAutenticado(accion, datos) {
     if (!token) {
         return {
             success: false,
-            codigo: "SIN_TOKEN",
-            message: "Esta sesión no tiene token de autenticación (la sesión local se perdió o el servidor de Apps Script desplegado es una versión anterior que no lo entrega). Cierre sesión e ingrese nuevamente; si se repite, actualice la implementación de Apps Script."
+            codigo: "SESION_INVALIDA",
+            message: "Su sesión no es válida o ya venció. Cierre sesión e ingrese nuevamente."
         };
     }
 
@@ -386,7 +386,7 @@ async function postAutenticado(accion, datos) {
 
     // El servidor indicó que la sesión ya no existe (venció o se reinició la
     // caché): descartar el token local para no reutilizarlo.
-    if (resultado && (resultado.codigo === "SESION_INVALIDA" || resultado.codigo === "SIN_TOKEN")) {
+    if (resultado && resultado.codigo === "SESION_INVALIDA") {
         localStorage.removeItem("qualityToken");
     }
 

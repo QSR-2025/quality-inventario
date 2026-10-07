@@ -179,31 +179,16 @@ form.addEventListener("submit", async (e) => {
             }
 
 
-            if (datos.token) {
-
-                mostrarMensaje(
-                    "Inicio de sesión correcto.",
-                    "#198754"
-                );
-
-            } else {
-
-                // El servidor desplegado no entregó token: sin él no se pueden
-                // registrar movimientos. Se avisa en lugar de fallar más tarde.
-                mostrarMensaje(
-                    "Inicio de sesión correcto, pero el servidor no entregó el token de sesión " +
-                    "(la implementación de Apps Script está desactualizada). " +
-                    "No podrá registrar entradas ni salidas hasta actualizarla.",
-                    "#b45309"
-                );
-
-            }
+            mostrarMensaje(
+                "Inicio de sesión correcto.",
+                "#198754"
+            );
 
             setTimeout(() => {
 
                 window.location.href = "home.html";
 
-            }, datos.token ? 1000 : 4000);
+            }, 1000);
 
 
         } else {

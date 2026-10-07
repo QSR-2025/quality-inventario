@@ -62,7 +62,7 @@ Inventario
 <nav>
 
 
-<a id="menuProductos">
+<a id="menuProductos" class="active">
     <i class="fas fa-boxes-stacked"></i>
     <span>Productos</span>
 </a>
@@ -81,7 +81,7 @@ Inventario
     <i class="fas fa-calendar-xmark"></i>
     <span>Vencimientos</span>
 </a>
-<a id="menuConfiguracion">
+<a>
     <i class="fas fa-gear"></i>
     <span>Configuración</span>
 </a>
@@ -90,6 +90,7 @@ Inventario
 
 <div class="sidebar-footer">
     Quality Sistemas y Reactivos
+    <small>Versión 2.0</small>
 </div>
 
 
@@ -546,20 +547,6 @@ id="fechaMovimientos">
     </button>
 
 </div>
-</section>
-
-<!-- CONFIGURACIÓN -->
-<section id="seccionConfiguracion" class="settings-page" style="display:none;">
-  <div class="settings-heading"><i class="fas fa-gear"></i><div><h2>Configuración</h2><p>Consulta tu información de usuario y personaliza tu experiencia en el sistema.</p></div></div>
-  <div class="settings-grid">
-    <article class="settings-card profile-card"><h3><i class="fas fa-user"></i> Perfil de usuario</h3>
-      <div class="profile-body"><div class="profile-avatar" id="fotoPerfilPreview">U</div><div class="profile-actions"><label class="settings-button" for="fotoPerfilInput"><i class="fas fa-camera"></i> Cambiar foto</label><input id="fotoPerfilInput" type="file" accept="image/png,image/jpeg,image/webp" hidden><button id="eliminarFotoPerfil" class="settings-button danger" type="button"><i class="fas fa-trash"></i> Eliminar foto</button><small>JPG, PNG o WEBP. Máximo 2 MB.</small></div></div>
-    </article>
-    <article class="settings-card"><h3><i class="fas fa-user-lock"></i> Información de la cuenta</h3><div class="account-grid" id="datosCuenta"></div><div class="settings-note"><i class="fas fa-circle-info"></i> La información de tu cuenta es solo de lectura. Para cambiarla, contacta al administrador.</div></article>
-    <article class="settings-card appearance-card"><h3><i class="fas fa-palette"></i> Apariencia</h3><label>Tema del sistema</label><div class="theme-options"><button class="theme-option selected" data-theme="light" type="button"><i class="fas fa-sun"></i><span>Claro</span><b>◉</b></button><button class="theme-option" data-theme="dark" type="button"><i class="fas fa-moon"></i><span>Oscuro</span><b>○</b></button></div><label for="fuenteSistema">Tipo de letra</label><select id="fuenteSistema"><option value="Inter">Inter (Por defecto)</option><option value="Arial">Arial</option><option value="Roboto">Roboto</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option></select><label>Tamaño de letra</label><div class="font-options"><button data-font-size="small" type="button">A<small>Pequeño</small></button><button data-font-size="medium" type="button" class="selected">A<small>Mediano</small></button><button data-font-size="large" type="button">A<small>Grande</small></button></div></article>
-    <article class="settings-card"><h3><i class="fas fa-eye"></i> Vista previa</h3><div class="preview-box"><p>Así se verá el sistema con tu configuración actual.</p><div class="preview-product"><div class="preview-icon"><i class="fas fa-cube"></i></div><div><strong>Nombre del producto</strong><p>SKU12345</p><small>Vista previa del tema y tipografía seleccionados.</small></div><span>Disponible</span></div></div></article>
-    <article class="settings-card system-card"><h3><i class="fas fa-desktop"></i> Información del sistema</h3><div class="system-info"><i class="fas fa-cube"></i><div><strong>Quality Inventario</strong></div><div><p>Versión del programa: <b>2.0</b></p><p>Creador: <b>Edgar Elvir</b></p><small>Quality Sistemas y Reactivos</small></div></div></article>
-  </div>
 </section>
 
 <!-- ==========================

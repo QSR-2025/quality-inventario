@@ -782,7 +782,7 @@ function actualizarDashboard(datos) {
 
 // Oculta todas las secciones principales antes de abrir la seleccionada.
 function ocultarSeccionesPrincipales() {
-    ["seccionResultados", "seccionAlmacen", "seccionMovimientos", "seccionVencimientos", "seccionConfiguracion"].forEach(id => {
+    ["seccionResultados", "seccionAlmacen", "seccionMovimientos", "seccionVencimientos"].forEach(id => {
         const elemento = document.getElementById(id);
         if (elemento) elemento.style.display = "none";
     });

@@ -932,16 +932,6 @@ alternarCamposLoteNuevo(false);
         if (e.target?.id === tipo + 'Sku') actualizarProductoDesdeSku(tipo);
     });
 });
-const registroEnCurso = { entrada: false, salida: false };
-const intentosPendientes = { entrada: null, salida: null };
-function obtenerRequestId(tipo, comunes, items) {
-    const firma = JSON.stringify([comunes, items]);
-    const previo = intentosPendientes[tipo];
-    if (previo && previo.firma === firma) return previo.id;
-    const id = 'req-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 8);
-    intentosPendientes[tipo] = { firma, id };
-    return id;
-}
 function pintarLista(tipo) {
     const lista = tipo === 'entrada' ? entradasPendientes : salidasPendientes;
     const cont = document.getElementById(tipo === 'entrada' ? 'listaEntradasPendientes' : 'listaSalidasPendientes');
@@ -1010,9 +1000,6 @@ document.addEventListener('click', async event => {
             if (!lot || obtenerStockLote(lot) < item.cantidad) { alert(`Existencia insuficiente para SKU ${item.producto}, lote ${item.lote}. No se registró la factura.`); return; }
         }
     }
-    // Evita un segundo envío mientras hay uno en curso (doble clic / toques repetidos).
-    if (registroEnCurso[tipo]) return;
-    registroEnCurso[tipo] = true;
     boton.disabled = true; const textoOriginal = boton.innerHTML;
     const total = arr.length;
     const TAMANO_LOTE = 25; // productos por solicitud: rápido y muy por debajo del límite de 6 min del servidor
@@ -1024,11 +1011,10 @@ document.addEventListener('click', async event => {
             const bloque = arr.slice(0, TAMANO_LOTE);
             boton.textContent = `Registrando ${registrados + 1}-${registrados + bloque.length} de ${total}...`;
             if (typeof registrarActividad === 'function') registrarActividad(); // una operación larga cuenta como actividad
-            const itemsEnvio = bloque.map(i => ({ producto: i.producto, lote: i.lote, cantidad: i.cantidad, vencimiento: i.vencimiento || '' }));
-            // Mismo identificador si se reintenta exactamente la misma tanda tras un corte de red.
-            const requestId = obtenerRequestId(tipo, comunes, itemsEnvio);
-            const resultado = await registrarMovimientosLote({ ...comunes, requestId }, itemsEnvio);
-            intentosPendientes[tipo] = null; // el servidor respondió: el próximo envío es nuevo
+            const resultado = await registrarMovimientosLote(
+                comunes,
+                bloque.map(i => ({ producto: i.producto, lote: i.lote, cantidad: i.cantidad, vencimiento: i.vencimiento || '' }))
+            );
             // Quitar de la lista los productos que el servidor YA procesó, para que
             // un reintento no los registre dos veces.
             const hechos = Math.min(Number(resultado?.procesados) || (resultado?.success ? bloque.length : 0), bloque.length);
@@ -1055,9 +1041,9 @@ document.addEventListener('click', async event => {
         const errorDeRed = error instanceof TypeError || /^HTTP/.test(String(error.message || ''));
         alert(`No se completó el registro: ${error.message || 'error inesperado'}.` +
             (errorDeRed ? '\n\nLa conexión se interrumpió: es posible que el servidor sí haya procesado esta tanda. Revise el reporte de Movimientos antes de reintentar.' : '') +
-            (registrados > 0 ? `\n\nYa se registraron ${registrados} producto(s). En la lista quedan ${quedan} pendiente(s): corrija el problema y vuelva a presionar Registrar (los ya registrados no se repetirán).` : (errorDeRed ? '' : '\n\nNo se registró ningún producto de esta lista.')));
+            (registrados > 0 ? `\n\nYa se registraron ${registrados} producto(s). En la lista quedan ${quedan} pendiente(s): corrija el problema y vuelva a presionar Registrar (los ya registrados no se repetirán).` : '\n\nNo se registró ningún producto de esta lista.'));
         if (registrados > 0 && typeof actualizarInventario === 'function') actualizarInventario({ forzar: false, silencioso: true });
     }
-    finally { registroEnCurso[tipo] = false; boton.disabled=false; boton.innerHTML=textoOriginal; }
+    finally { boton.disabled=false; boton.innerHTML=textoOriginal; }
 });
 pintarLista('entrada'); pintarLista('salida');
