@@ -4,7 +4,7 @@
    Optimizada para reducir consultas y mejorar velocidad
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxwvaLVMN4HsuAZAwuv01QST3rbAw4tvUR19l5_rSaeSKDMvad8O8Qls9oxrvKI6fo/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbykaiyOHBusJlJghoXMEygYKpdluTmMjlFQEX1cV-If2kXKElENYg8LxSBwC0dgoud8/exec";
 
 /* ==========================================================
    CONFIGURACIÓN DE CACHÉ
@@ -352,7 +352,8 @@ async function getVencimientos(
    REGISTRO DE MOVIMIENTOS - ALMACÉN
 ========================================================== */
 
-async function registrarMovimiento(datos) {
+/** Envía un POST autenticado con el token de la sesión. */
+async function postAutenticado(accion, datos) {
 
     const token = String(localStorage.getItem("qualityToken") || "").trim();
 
@@ -368,7 +369,7 @@ async function registrarMovimiento(datos) {
     const respuesta = await fetch(API_URL, {
         method: "POST",
         body: JSON.stringify({
-            action: "registrarMovimiento",
+            action: accion,
             ...datos,
             // El token de la sesión autenticada siempre prevalece sobre
             // cualquier propiedad accidental dentro del objeto del movimiento.
@@ -389,11 +390,25 @@ async function registrarMovimiento(datos) {
         localStorage.removeItem("qualityToken");
     }
 
-    // Si se registró correctamente, limpiar datos antiguos
-    // para que el inventario se recargue actualizado.
-    if (resultado.success) {
+    // Si se registró algo, limpiar datos antiguos para que el inventario
+    // se recargue actualizado.
+    if (resultado && (resultado.success || resultado.procesados > 0)) {
         limpiarCacheAPI();
     }
 
     return resultado;
+}
+
+/** Registra UN movimiento (se conserva por compatibilidad). */
+async function registrarMovimiento(datos) {
+    return postAutenticado("registrarMovimiento", datos);
+}
+
+/**
+ * Registra VARIOS productos de una misma factura/traslado en una sola
+ * solicitud. `comunes` lleva tipo, bodega, cliente, documento y observación;
+ * `items` solo lo propio de cada producto (producto, lote, cantidad, vencimiento).
+ */
+async function registrarMovimientosLote(comunes, items) {
+    return postAutenticado("registrarMovimientos", { ...comunes, items });
 }
