@@ -60,11 +60,9 @@ function obtenerBodegaLote(lote, producto) {
     const posiblesBodegas = [
         lote?.bodega,
         lote?.sucursal,
-        lote?.ubicacion,
         lote?.almacen,
         producto?.bodega,
         producto?.sucursal,
-        producto?.ubicacion,
         producto?.almacen
     ];
 
@@ -264,7 +262,12 @@ function cargarProductosAlmacen(
         /* Si el producto no tiene lotes en esta bodega (los materiales no
            tienen lotes y siempre se ofrecen) */
 
-        if (lotesBodega.length === 0 && !esProductoSinLoteAlmacen(producto)) return;
+        /* En ENTRADAS se ofrecen también los productos sin lotes en la
+           bodega (producto nuevo en la bodega); en SALIDAS solo los que
+           tienen lotes ahí. */
+        const esEntradaLista = idDatalist === "listaProductosEntrada";
+
+        if (lotesBodega.length === 0 && !esEntradaLista && !esProductoSinLoteAlmacen(producto)) return;
 
 
         /* Obtener SKU */
@@ -332,7 +335,8 @@ function cargarProductosAlmacen(
 
 function obtenerProductoPorTexto(
     texto,
-    bodegaSeleccionada = ""
+    bodegaSeleccionada = "",
+    permitirSinLotes = false
 ) {
 
     if (!Array.isArray(inventario)) {
@@ -392,10 +396,12 @@ function obtenerProductoPorTexto(
             return false;
         }
 
-        /* Confirmar que tenga lotes en la bodega (los materiales no tienen) */
+        /* Confirmar que tenga lotes en la bodega (los materiales no tienen).
+           En ENTRADAS se permite un producto que todavía no tiene lotes en
+           esa bodega (producto nuevo o que llega por primera vez). */
         if (bodega) {
 
-            if (esProductoSinLoteAlmacen(producto)) return true;
+            if (permitirSinLotes || esProductoSinLoteAlmacen(producto)) return true;
 
             return (producto.lotes || []).some(lote =>
                 obtenerBodegaLote(
@@ -458,7 +464,8 @@ function cargarLotesDesdeInput(
     const producto =
         obtenerProductoPorTexto(
             inputProducto.value,
-            bodega
+            bodega,
+            idLote === "entradaLote"
         );
 
     if (!producto) return;
@@ -575,13 +582,15 @@ function cargarLotesDesdeInput(
 
 function obtenerSkuProducto(
     textoProducto,
-    bodega
+    bodega,
+    permitirSinLotes = false
 ) {
 
     const producto =
         obtenerProductoPorTexto(
             textoProducto,
-            bodega
+            bodega,
+            permitirSinLotes
         );
 
     if (!producto) return "";
@@ -879,8 +888,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 const entradasPendientes = [];
 const salidasPendientes = [];
 
-function buscarProductoAlmacen(texto, bodega) {
-    return obtenerProductoPorTexto(texto, bodega);
+function buscarProductoAlmacen(texto, bodega, permitirSinLotes = false) {
+    return obtenerProductoPorTexto(texto, bodega, permitirSinLotes);
 }
 function resolverNombreProducto(producto) {
     return String(producto?.nombre || producto?.producto || producto?.descripcion || producto?.name || producto?.descripcionProducto || '').trim();
@@ -889,7 +898,7 @@ function actualizarProductoDesdeSku(tipo) {
     const prefijo = tipo === 'entrada' ? 'entrada' : 'salida';
     const bodega = document.getElementById(prefijo + 'Bodega')?.value || '';
     const sku = document.getElementById(prefijo + 'Sku')?.value.trim() || '';
-    const producto = buscarProductoAlmacen(sku, bodega);
+    const producto = buscarProductoAlmacen(sku, bodega, tipo === 'entrada');
     document.getElementById(prefijo + 'Producto').value = producto ? String(producto.sku || producto.codigo || producto.code || sku) : '';
     document.getElementById(prefijo + 'Nombre').value = producto ? resolverNombreProducto(producto) : '';
     cargarLotesDesdeInput(prefijo + 'Producto', prefijo + 'Bodega', prefijo + 'Lote');
@@ -961,19 +970,19 @@ document.addEventListener('click', async event => {
         const bodega = document.getElementById(pref+'Bodega').value;
         const skuIngresado = document.getElementById(pref+'Sku')?.value.trim() || '';
         const skuCampo = document.getElementById(pref+'Producto')?.value.trim() || '';
-        const sku = obtenerSkuProducto(skuCampo || skuIngresado, bodega) || skuCampo || skuIngresado;
+        const sku = obtenerSkuProducto(skuCampo || skuIngresado, bodega, tipo === 'entrada') || skuCampo || skuIngresado;
         const selectLote = document.getElementById(pref+'Lote');
         let lote = selectLote?.value || '';
         const camposNuevo = document.getElementById('camposLoteNuevo');
         const numeroLoteNuevo = document.getElementById('entradaNuevoLote')?.value.trim() || '';
         // El botón puede mostrar los campos aunque el select no conserve su valor.
-        const prodSinLote = esProductoSinLoteAlmacen(buscarProductoAlmacen(sku, bodega));
+        const prodSinLote = esProductoSinLoteAlmacen(buscarProductoAlmacen(sku, bodega, tipo === 'entrada'));
         if (prodSinLote) lote = LOTE_SIN_LOTE;
         const loteNuevo = !prodSinLote && tipo === 'entrada' && (
             lote === '__NUEVO_LOTE__' ||
             (camposNuevo && !camposNuevo.hidden && numeroLoteNuevo.length > 0)
         );
-        const prod = loteNuevo ? obtenerProductoPorTexto(sku, '') : buscarProductoAlmacen(sku, bodega);
+        const prod = loteNuevo ? obtenerProductoPorTexto(sku, '') : buscarProductoAlmacen(sku, bodega, tipo === 'entrada');
         const cantidad = Number(document.getElementById(pref+'Cantidad').value);
         if (loteNuevo) lote = numeroLoteNuevo;
         if (!bodega || !sku || !prod || !lote || !(cantidad > 0)) { alert('Complete bodega, SKU válido, lote y cantidad antes de agregar.'); return; }
@@ -1006,7 +1015,9 @@ document.addEventListener('click', async event => {
                 if (stockMaterialBodega(prod, bodega) < item.cantidad) { alert(`Existencia insuficiente para SKU ${item.producto} en la bodega seleccionada (disponible: ${stockMaterialBodega(prod, bodega)}). No se registró la factura.`); return; }
                 continue;
             }
-            const lot = (prod?.lotes || []).find(l => obtenerNumeroLote(l) === item.lote);
+            // El mismo número de lote puede existir en Tegus y en SPS:
+            // se valida contra el lote de la bodega seleccionada.
+            const lot = (prod?.lotes || []).find(l => obtenerNumeroLote(l) === item.lote && obtenerBodegaLote(l, prod) === bodega);
             if (!lot || obtenerStockLote(lot) < item.cantidad) { alert(`Existencia insuficiente para SKU ${item.producto}, lote ${item.lote}. No se registró la factura.`); return; }
         }
     }

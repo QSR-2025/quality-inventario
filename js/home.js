@@ -493,7 +493,14 @@ console.timeEnd("⏱️ TEGUS + SPS");
                         bodega:
                             lote.bodega ||
                             producto.bodega ||
-                            "Tegus"
+                            "Tegus",
+
+                        // Cada lote conserva la ubicación de SU bodega.
+                        // Nunca se hereda la del producto de otra bodega.
+                        ubicacion:
+                            lote.ubicacion ||
+                            producto.ubicacion ||
+                            ""
 
                     });
 
@@ -537,7 +544,11 @@ console.timeEnd("⏱️ TEGUS + SPS");
 
                     bodega:
                         producto.bodega ||
-                        "Tegus"
+                        "Tegus",
+
+                    ubicacion:
+                        producto.ubicacion ||
+                        ""
 
                 });
 
@@ -1693,9 +1704,11 @@ function verDetalleProducto(producto) {
                 const fecha = lote.vencimiento || "Sin fecha";
                 const bodega = nombreBodegaVisible(lote.bodega || producto.bodega);
 
+                    // La ubicación pertenece al lote (a su bodega). No se usa la
+                    // ubicación general del producto: es la de la primera bodega
+                    // que se leyó y aparecería repetida en la otra bodega.
                     const ubicacionLote =
-                    lote.ubicacion ||
-                    producto.ubicacion ||
+                    String(lote.ubicacion || "").trim() ||
                     "No asignada";
 
                 const dias = calcularDiasRestantes(fecha);

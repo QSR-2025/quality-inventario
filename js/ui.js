@@ -41,6 +41,20 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.classList.add("qi-page-products");
 });
 
+/* La foto se guarda POR USUARIO (antes era una sola clave compartida por
+   todos los perfiles del mismo navegador). */
+function claveFotoPerfilQI(){
+ const u=(localStorage.getItem('qualityUsuario')||'').trim().toLowerCase();
+ return u?('qualityFotoPerfil:'+u):null;
+}
+function obtenerFotoPerfilQI(){
+ const k=claveFotoPerfilQI();
+ return k?(localStorage.getItem(k)||''):'';
+}
+// La clave antigua compartida no permite saber de quién era la foto:
+// se elimina para que no aparezca en el perfil equivocado.
+try{localStorage.removeItem('qualityFotoPerfil');}catch(e){}
+
 function pintarDatosCuenta(){
  const nombre=localStorage.getItem('qualityNombre')||'—', usuario=localStorage.getItem('qualityUsuario')||'—', cargo=localStorage.getItem('qualityCargo')||'—', rol=localStorage.getItem('qualityRol')||'—';
  const campos=[['Usuario',usuario],['Nombre',nombre],['Cargo',cargo],['Rol',rol],['Estado','Activo'],['Último acceso',localStorage.getItem('qualityUltimoAccesoTexto')||'—'],['Fecha de creación',localStorage.getItem('qualityFechaCreacion')||'No disponible']];
@@ -48,7 +62,7 @@ function pintarDatosCuenta(){
  if(cont) [...cont.children].forEach((el,i)=>el.querySelector('span').textContent=campos[i][1]);
 }
 function actualizarAvatarQI(){
- const foto=localStorage.getItem('qualityFotoPerfil');
+ const foto=obtenerFotoPerfilQI();
  const nombre=(localStorage.getItem('qualityNombre')||localStorage.getItem('qualityUsuario')||'U').trim();
  const avatar=document.getElementById('avatarUsuario');
  if(!avatar) return;
@@ -68,7 +82,7 @@ function aplicarPreferenciasQI(){
  document.querySelectorAll('[data-theme]').forEach(b=>{b.classList.toggle('selected',b.dataset.theme===(prefs.theme||'light'));const marca=b.querySelector('b');if(marca)marca.textContent=b.classList.contains('selected')?'◉':'○'});
  document.querySelectorAll('[data-font-size]').forEach(b=>b.classList.toggle('selected',b.dataset.fontSize===(prefs.fontSize||'medium')));
  const fuente=document.getElementById('fuenteSistema');if(fuente)fuente.value=prefs.font||'Inter';
- const foto=localStorage.getItem('qualityFotoPerfil');const av=document.getElementById('fotoPerfilPreview');if(av){if(foto){av.style.backgroundImage=`url("${foto}")`;av.textContent=''}else{av.style.backgroundImage='';av.textContent=(localStorage.getItem('qualityNombre')||'U').trim().charAt(0).toUpperCase()}}
+ const foto=obtenerFotoPerfilQI();const av=document.getElementById('fotoPerfilPreview');if(av){if(foto){av.style.backgroundImage=`url("${foto}")`;av.textContent=''}else{av.style.backgroundImage='';av.textContent=(localStorage.getItem('qualityNombre')||'U').trim().charAt(0).toUpperCase()}}
  actualizarAvatarQI();
 }
 document.addEventListener('DOMContentLoaded',()=>{
@@ -76,7 +90,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.querySelectorAll('[data-theme]').forEach(b=>b.addEventListener('click',()=>{const x=prefs();x.theme=b.dataset.theme;localStorage.setItem('qualityPreferencias',JSON.stringify(x));aplicarPreferenciasQI()}));
  const fuente=document.getElementById('fuenteSistema');if(fuente)fuente.addEventListener('change',()=>{const x=prefs();x.font=fuente.value;localStorage.setItem('qualityPreferencias',JSON.stringify(x));aplicarPreferenciasQI()});
  document.querySelectorAll('[data-font-size]').forEach(b=>b.addEventListener('click',()=>{const x=prefs();x.fontSize=b.dataset.fontSize;localStorage.setItem('qualityPreferencias',JSON.stringify(x));aplicarPreferenciasQI()}));
- const input=document.getElementById('fotoPerfilInput');if(input)input.addEventListener('change',()=>{const file=input.files&&input.files[0];if(!file)return;if(file.size>2*1024*1024){alert('La foto no debe superar 2 MB.');input.value='';return}const reader=new FileReader();reader.onload=()=>{localStorage.setItem('qualityFotoPerfil',reader.result);aplicarPreferenciasQI()};reader.readAsDataURL(file)});
- const del=document.getElementById('eliminarFotoPerfil');if(del)del.addEventListener('click',()=>{localStorage.removeItem('qualityFotoPerfil');aplicarPreferenciasQI()});
+ const input=document.getElementById('fotoPerfilInput');if(input)input.addEventListener('change',()=>{const file=input.files&&input.files[0];if(!file)return;if(file.size>2*1024*1024){alert('La foto no debe superar 2 MB.');input.value='';return}const reader=new FileReader();reader.onload=()=>{const k=claveFotoPerfilQI();if(!k){alert('No se pudo identificar el usuario. Inicie sesión nuevamente.');return}try{localStorage.setItem(k,reader.result)}catch(e){alert('No se pudo guardar la foto en este navegador.');return}aplicarPreferenciasQI()};reader.readAsDataURL(file)});
+ const del=document.getElementById('eliminarFotoPerfil');if(del)del.addEventListener('click',()=>{const k=claveFotoPerfilQI();if(k)localStorage.removeItem(k);aplicarPreferenciasQI()});
  aplicarPreferenciasQI();pintarDatosCuenta();
 });
