@@ -1,0 +1,23 @@
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'css/home.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'css/login.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'home.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/almacen.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/api.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/home.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/login.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/movimientos.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/pdf-vencimientos.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/session.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/ui.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'js/vencimientos.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'manifest.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'service-worker.js', LF will be replaced by CRLF the next time Git touches it
+README.md
+css/home.css
+home.html
+js/almacen.js
+js/home.js
+service-worker.js

@@ -1,4 +1,4 @@
-const CACHE_NAME = "quality-inventario-v13";
+const CACHE_NAME = "quality-inventario-v14";
 
 const FILES = [
     "./",

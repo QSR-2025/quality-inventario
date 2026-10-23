@@ -679,6 +679,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const btnSalida =
         document.getElementById("tabSalida");
 
+    const btnSugerenciaPedido = document.getElementById("btnSugerenciaPedidoAlmacen");
+    if (btnSugerenciaPedido) btnSugerenciaPedido.addEventListener("click", () => {
+        document.getElementById("tabEntrada")?.classList.remove("active");
+        document.getElementById("tabSalida")?.classList.remove("active");
+        if (typeof mostrarSugerenciaPedido === "function") mostrarSugerenciaPedido();
+    });
+
     const formEntrada =
         document.getElementById("formEntrada");
 
@@ -706,6 +713,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         btnEntrada.addEventListener("click", () => {
 
+            if (typeof cerrarSugerenciaPedido === "function") cerrarSugerenciaPedido();
             btnEntrada.classList.add("active");
             btnSalida.classList.remove("active");
 
@@ -722,6 +730,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         btnSalida.addEventListener("click", () => {
 
+            if (typeof cerrarSugerenciaPedido === "function") cerrarSugerenciaPedido();
             btnSalida.classList.add("active");
             btnEntrada.classList.remove("active");
 

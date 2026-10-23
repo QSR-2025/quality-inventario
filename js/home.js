@@ -27,6 +27,21 @@ let rutaActual = {
 
 let indiceMarcas = new Map();
 let indiceCategorias = new Map();
+let mapaLogosMarcas = new Map();
+
+async function cargarLogosMarcas() {
+    try {
+        const respuesta = await fetch(`${API_URL}?action=getMarcas`, { cache: "no-store" });
+        if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+        const datos = await respuesta.json();
+        mapaLogosMarcas.clear();
+        (Array.isArray(datos?.marcas) ? datos.marcas : []).forEach(m => {
+            const nombre = String(m.nombre || m.marca || "").trim().toLocaleLowerCase();
+            const imagen = String(m.imagen || m.logo || "").trim();
+            if (nombre && imagen && !mapaLogosMarcas.has(nombre)) mapaLogosMarcas.set(nombre, imagen);
+        });
+    } catch (e) { console.warn("No se pudieron cargar los logos de Marcas:", e); }
+}
 // ==========================================================
 // RENDERIZADO PROGRESIVO DE PRODUCTOS
 // Evita crear cientos de tarjetas al mismo tiempo
@@ -85,37 +100,22 @@ function renderProductosProgresivo(productos, contenedor, lote = 30) {
     );
 }
 function construirIndicesInventario() {
-
     indiceMarcas.clear();
     indiceCategorias.clear();
-
     inventario.forEach(producto => {
-
-        const marca = producto.proveedor || "";
-        const categoria = producto.categoria || "";
-
-        if (marca) {
-
-            if (!indiceMarcas.has(marca)) {
-                indiceMarcas.set(marca, []);
-            }
-
-            indiceMarcas.get(marca).push(producto);
-        }
-
-        if (marca && categoria) {
-
-            const clave = `${marca}|||${categoria}`;
-
-            if (!indiceCategorias.has(clave)) {
-                indiceCategorias.set(clave, []);
-            }
-
-            indiceCategorias.get(clave).push(producto);
-        }
-
+        // En TGU la marca procede de Reactivos.MARCA; no usar el nombre
+        // de la hoja/proveedor como marca. Los vacíos tienen agrupación propia.
+        const marca = String(producto.marca || producto.proveedor || "").trim() || "Sin marca";
+        const categoria = String(producto.categoria || "").trim() || "Sin categoría";
+        producto.marca = marca;
+        producto.proveedor = marca;
+        producto.categoria = categoria;
+        if (!indiceMarcas.has(marca)) indiceMarcas.set(marca, []);
+        indiceMarcas.get(marca).push(producto);
+        const clave = `${marca}|||${categoria}`;
+        if (!indiceCategorias.has(clave)) indiceCategorias.set(clave, []);
+        indiceCategorias.get(clave).push(producto);
     });
-
 }
 // ========================================
 // INICIO
@@ -192,6 +192,7 @@ async function cargarInicio() {
                 : [];
 
         construirIndicesInventario();
+        await cargarLogosMarcas();
 
         console.log(
             "Productos combinados:",
@@ -900,7 +901,7 @@ function mostrarMarcas() {
     if (!contenedor) return;
 
     contenedor.innerHTML = "";
-
+    document.getElementById("toolbarSugerenciaPedido")?.remove();
     const marcas =
         Array.from(indiceMarcas.keys())
             .filter(Boolean)
@@ -919,16 +920,18 @@ function mostrarMarcas() {
 
         div.className = "product-card";
 
+        const logoMarca = mapaLogosMarcas.get(String(marca).trim().toLocaleLowerCase()) || "";
+        div.classList.add("brand-card");
         div.innerHTML = `
+            <div class="brand-logo-wrap">${logoMarca ? `<img class="brand-logo" src="${logoMarca.replace(/"/g, "&quot;")}" alt="Logo ${marca.replace(/"/g, "&quot;")}" loading="lazy">` : '<span class="brand-logo-placeholder"><i class="fas fa-tags"></i></span>'}</div>
             <div class="product-info">
-                <h3><i class="fas fa-folder"></i> ${marca}</h3>
+                <h3>${marca}</h3>
                 <p>${cantidad} productos</p>
             </div>
-
-            <button class="btn-detail">
-                Abrir
-            </button>
+            <button class="btn-detail">Abrir</button>
         `;
+        const logoImg = div.querySelector(".brand-logo");
+        if (logoImg) logoImg.onerror = () => { logoImg.replaceWith(Object.assign(document.createElement("span"), {className:"brand-logo-placeholder", innerHTML:'<i class="fas fa-tags"></i>'})); };
 
         div.onclick = () => {
 
@@ -950,6 +953,7 @@ function mostrarMarcas() {
 }
 function mostrarCategorias(marca) {
 
+    document.getElementById("toolbarSugerenciaPedido")?.remove();
     filtroEstadoActivo = "";
 
     rutaActual.marca = marca;
@@ -1028,6 +1032,7 @@ function mostrarCategorias(marca) {
 
 function mostrarProductos(marca, categoria) {
 
+    document.getElementById("toolbarSugerenciaPedido")?.remove();
     filtroEstadoActivo = "";
 
     rutaActual.marca = marca;
@@ -1096,6 +1101,81 @@ function crearCarpeta(titulo, texto, accion) {
 
 
 // ========================================
+// SUGERENCIA DE PEDIDO DENTRO DE ALMACÉN
+// Datos exclusivamente desde Reactivos (TGU) vía endpoint de GS.
+// ========================================
+async function mostrarSugerenciaPedido() {
+    const almacen = document.getElementById("seccionAlmacen");
+    const formEntrada = document.getElementById("formEntrada");
+    const formSalida = document.getElementById("formSalida");
+    const tabs = document.querySelector("#seccionAlmacen .almacen-tabs");
+    const panel = document.getElementById("panelSugerenciaAlmacen");
+    if (!almacen || !panel) return;
+
+    if (formEntrada) formEntrada.style.display = "none";
+    if (formSalida) formSalida.style.display = "none";
+    if (tabs) tabs.style.display = "none";
+    panel.style.display = "block";
+    panel.innerHTML = '<div class="sugerencia-panel"><p>Cargando sugerencia de pedido de Tegucigalpa…</p></div>';
+
+    document.getElementById("tituloPagina").textContent = "Almacén";
+    document.getElementById("subtituloPagina").textContent = "Entradas, salidas y sugerencias de reposición · Tegucigalpa";
+    document.getElementById("seccionResultados").style.display = "none";
+    document.getElementById("seccionMovimientos").style.display = "none";
+    document.getElementById("seccionVencimientos").style.display = "none";
+    almacen.style.display = "block";
+
+    try {
+        // Este endpoint lee directamente la pestaña Reactivos del archivo TGU; no usa el inventario combinado SPS+TGU.
+        const respuesta = await fetch(`${API_URL}?action=getReporteReposicionTGU&forzar=1`, {cache:"no-store"});
+        if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+        const datos = await respuesta.json();
+        if (datos.error) throw new Error(datos.mensaje || datos.message || "El servidor no pudo leer Reactivos de TGU.");
+        const pedidos = Array.isArray(datos.productos) ? datos.productos.map(p => ({
+            codigo:p.codigo || "", producto:p.producto || "", marca:p.marca || "Sin marca",
+            categoria:p.categoria || "Sin categoría", existencia:Number(p.existencia)||0,
+            minimo:Number(p.minimo)||0, sugerida:Math.max(0,Number(p.cantidadSugerida ?? p.sugerida)||0)
+        })) : [];
+
+        const filas = pedidos.map(p => `<tr><td>${escaparHTML(p.codigo)}</td><td>${escaparHTML(p.producto)}</td><td>${escaparHTML(p.marca)}</td><td>${escaparHTML(p.categoria)}</td><td>${p.existencia}</td><td>${p.minimo}</td><td><strong>${p.sugerida}</strong></td></tr>`).join("");
+        panel.innerHTML = `<div class="sugerencia-panel"><div class="sugerencia-panel-head"><div><h2>Productos que requieren reposición · TGU</h2><p>${pedidos.length} producto(s) de Reactivos por debajo del mínimo requerido.</p></div><div class="sugerencia-actions"><button class="btn-secundario" id="btnExportarSugerenciaAlmacen"><i class="fas fa-file-excel"></i> Exportar a Excel</button><button class="btn-detail" id="btnCerrarSugerenciaAlmacen"><i class="fas fa-arrow-left"></i> Volver a Almacén</button></div></div>${pedidos.length ? `<div class="tabla-responsive"><table class="tabla-sugerencia"><thead><tr><th>Código</th><th>Producto</th><th>Marca</th><th>Categoría</th><th>Existencia TGU</th><th>Mínimo requerido</th><th>Cantidad sugerida</th></tr></thead><tbody>${filas}</tbody></table></div><p class="sugerencia-nota">Solo se consulta Reactivos de Tegucigalpa. Cálculo: mínimo requerido − existencia TGU. Los productos sin mínimo configurado no se incluyen.</p>` : '<div class="sugerencia-vacia"><i class="fas fa-circle-check"></i><h3>Sin productos pendientes de reposición</h3><p>No hay productos de TGU por debajo de su mínimo configurado.</p></div>'}</div>`;
+        document.getElementById("btnCerrarSugerenciaAlmacen").onclick = cerrarSugerenciaPedido;
+        document.getElementById("btnExportarSugerenciaAlmacen")?.addEventListener("click", () => exportarSugerenciaExcel(pedidos.map(p=>({codigo:p.codigo,producto:p.producto,marca:p.marca,categoria:p.categoria,existencia:p.existencia,minimo:p.minimo,sugerida:p.sugerida}))));
+    } catch (error) {
+        panel.innerHTML = `<div class="sugerencia-panel"><h2>No se pudo cargar la sugerencia</h2><p>${escaparHTML(error.message || "Error de conexión")}</p><button class="btn-detail" id="btnCerrarSugerenciaAlmacen">Volver a Almacén</button></div>`;
+        document.getElementById("btnCerrarSugerenciaAlmacen").onclick = cerrarSugerenciaPedido;
+    }
+}
+
+function cerrarSugerenciaPedido() {
+    const panel = document.getElementById("panelSugerenciaAlmacen");
+    const tabs = document.querySelector("#seccionAlmacen .almacen-tabs");
+    const formEntrada = document.getElementById("formEntrada");
+    const formSalida = document.getElementById("formSalida");
+    if (panel) { panel.style.display = "none"; panel.innerHTML = ""; }
+    if (tabs) tabs.style.display = "flex";
+    if (formEntrada) formEntrada.style.display = "grid";
+    if (formSalida) formSalida.style.display = "none";
+    document.getElementById("tabEntrada")?.classList.add("active");
+    document.getElementById("tabSalida")?.classList.remove("active");
+}
+
+function escaparHTML(valor) {
+    return String(valor ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+// Genera un libro XML Spreadsheet compatible con Excel (archivo .xls real, no CSV renombrado).
+function exportarSugerenciaExcel(pedidos) {
+    const columnas = ["Código","Producto","Marca","Categoría","Existencia","Mínimo requerido","Cantidad sugerida"];
+    const esc = v => escaparHTML(v);
+    const encabezado = columnas.map(v => `<Cell><Data ss:Type="String">${esc(v)}</Data></Cell>`).join("");
+    const filas = pedidos.map(p => `<Row>${[p.codigo,p.producto,p.marca,p.categoria,p.existencia,p.minimo,p.sugerida].map((v,i)=>`<Cell><Data ss:Type="${i>=4?"Number":"String"}">${esc(v)}</Data></Cell>`).join("")}</Row>`).join("");
+    const xml = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Sugerencia de pedido"><Table><Row>${encabezado}</Row>${filas}</Table></Worksheet></Workbook>`;
+    const blob = new Blob([xml], {type:"application/vnd.ms-excel;charset=utf-8;"});
+    const url = URL.createObjectURL(blob); const a = document.createElement("a");
+    a.href = url; a.download = "sugerencia-de-pedido-TGU.xls"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+// ========================================
 // RENDER TARJETA DE PRODUCTO
 // ========================================
 
@@ -1106,19 +1186,28 @@ function renderProductCard(producto, contenedor) {
 
     div.className = "product-card";
 
+    const imagen = String(producto.imagen || "").trim();
     div.innerHTML = `
+        <div class="product-card-image" aria-label="Imagen del producto">
+          ${imagen ? `<img src="${imagen.replace(/"/g, '&quot;')}" alt="${String(producto.nombre || 'Producto').replace(/"/g, '&quot;')}" loading="lazy">` : '<span class="product-image-placeholder"><i class="fas fa-flask"></i></span>'}
+        </div>
         <div class="product-info">
             <h3>${producto.nombre || "Sin nombre"}</h3>
             <p>SKU: ${producto.sku || "—"}</p>
-            <p>Proveedor: ${producto.proveedor || "—"}</p>
-            <p>Categoría: ${producto.categoria || "—"}</p>
-            <p>Stock: ${producto.stockTotal || 0}</p>
+            <p>Marca: ${producto.marca || producto.proveedor || "Sin marca"}</p>
+            <p>Categoría: ${producto.categoria || "Sin categoría"}</p>
+            <p>Stock: ${producto.stockTotal ?? 0}</p>
         </div>
         <button class="btn-detail">
             <i class="fas fa-eye"></i>
             Ver detalles
         </button>
     `;
+    // El mínimo requerido se muestra en Sugerencia de pedido y en el detalle,
+    // nunca en la tarjeta resumida del catálogo.
+    div.querySelectorAll('.fila-minimo-requerido, .detalle-fila-minimo-requerido, #detalleFilaMinimoRequerido').forEach(el => el.remove());
+    const cardImg = div.querySelector('.product-card-image img');
+    if (cardImg) cardImg.onerror = () => { cardImg.replaceWith(Object.assign(document.createElement('span'), {className:'product-image-placeholder', innerHTML:'<i class="fas fa-flask"></i>'})); };
 
     div.querySelector(".btn-detail").onclick = (e) => {
 
@@ -1589,6 +1678,22 @@ function crearBloqueReferencia(titulo, valor) {
 function verDetalleProducto(producto) {
     productoDetalleActual = producto;
 
+    // Imagen principal procedente de Reactivos.IMAGEN. Se mantiene dentro
+    // del modal y con object-fit:contain para evitar recortes o deformación.
+    const nombreDetalle = document.getElementById("detalleNombre");
+    let imagenDetalle = document.getElementById("detalleImagenProducto");
+    if (!imagenDetalle) {
+        imagenDetalle = document.createElement("div");
+        imagenDetalle.id = "detalleImagenProducto";
+        imagenDetalle.className = "detalle-imagen-producto";
+        nombreDetalle?.insertAdjacentElement("afterend", imagenDetalle);
+    }
+    const urlImagen = String(producto.imagen || "").trim();
+    imagenDetalle.innerHTML = urlImagen
+        ? `<img src="${urlImagen.replace(/"/g, '&quot;')}" alt="${String(producto.nombre || 'Producto').replace(/"/g, '&quot;')}">`
+        : '<span class="product-image-placeholder"><i class="fas fa-flask"></i> Sin imagen</span>';
+    const imagenModal = imagenDetalle.querySelector('img');
+    if (imagenModal) imagenModal.onerror = () => { imagenDetalle.innerHTML = '<span class="product-image-placeholder"><i class="fas fa-flask"></i> Sin imagen</span>'; };
 
     // DATOS PRINCIPALES
 
@@ -1610,6 +1715,21 @@ function verDetalleProducto(producto) {
 
     document.getElementById("detalleStock").textContent =
         producto.stockTotal ?? 0;
+
+    // El mínimo requerido procede exclusivamente de Reactivos.MÍNIMO REQUERIDO.
+    let filaMinimo = document.getElementById("detalleFilaMinimoRequerido");
+    if (!filaMinimo) {
+        filaMinimo = document.createElement("p");
+        filaMinimo.id = "detalleFilaMinimoRequerido";
+        filaMinimo.innerHTML = '<strong>Mínimo requerido:</strong> <span id="detalleMinimoRequerido"></span>';
+        const filaStock = document.getElementById("detalleStock")?.closest("p");
+        if (filaStock) filaStock.insertAdjacentElement("afterend", filaMinimo);
+    }
+    const valorMinimo = producto.minimoRequerido;
+    const textoMinimo = (valorMinimo === null || valorMinimo === undefined || String(valorMinimo).trim() === "")
+        ? "Sin mínimo configurado" : String(valorMinimo);
+    const spanMinimo = document.getElementById("detalleMinimoRequerido");
+    if (spanMinimo) spanMinimo.textContent = textoMinimo;
 
     const esMaterial = esProductoSinLotes(producto);
 

@@ -1875,3 +1875,41 @@ body:not(.qi-page-products) header .search { display: none !important; }
 body.qi-page-products header .search { display: flex; }
 .avatar.avatar-con-foto { padding: 0; overflow: hidden; background-image: none !important; }
 .avatar .qi-avatar-image { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+
+/* Imágenes del catálogo: proporción estable sin deformar el producto. */
+.product-card-image{flex:0 0 150px;width:150px;height:112px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:10px;background:var(--superficie-secundaria,#f1f5f9);}
+.product-card-image img{display:block;width:100%;height:100%;object-fit:contain;padding:8px;box-sizing:border-box;}
+.product-image-placeholder{width:100%;height:100%;min-height:72px;display:flex;align-items:center;justify-content:center;gap:8px;color:#64748b;background:#f1f5f9;border-radius:10px;font-size:14px;}
+.detalle-imagen-producto{width:100%;display:flex;align-items:center;justify-content:center;margin:12px 0 18px;min-height:150px;}
+.detalle-imagen-producto img{display:block;width:min(100%,280px);height:180px;object-fit:contain;border-radius:12px;background:#f8fafc;padding:10px;box-sizing:border-box;}
+.detalle-imagen-producto .product-image-placeholder{width:min(100%,280px);height:150px;}
+@media(max-width:640px){.product-card{flex-wrap:wrap;align-items:flex-start}.product-card-image{flex-basis:100%;width:100%;height:140px}.product-card .btn-detail{margin-left:auto}}
+
+/* Tarjetas de marca: logotipo leído desde la pestaña Marcas (MARCA / IMAGEN). */
+.brand-card{display:flex;align-items:center;gap:16px;min-height:94px;}
+.brand-logo-wrap{flex:0 0 64px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:10px;background:#fff;border:1px solid #e2e8f0;padding:5px;box-sizing:border-box;}
+.brand-logo{display:block;width:100%;height:100%;object-fit:contain;}
+.brand-logo-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#64748b;background:#f1f5f9;border-radius:7px;}
+.brand-card .product-info{flex:1;min-width:0;}
+#detalleFilaMinimoRequerido{border-bottom:1px solid #e8edf5;padding:8px 0;margin:0;}
+
+
+/* Sugerencia de pedido */
+.sugerencia-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 18px;padding:18px 20px;background:var(--superficie,#fff);border:1px solid var(--borde,#dbe5f5);border-radius:var(--radio,16px)}
+.sugerencia-toolbar h2,.sugerencia-panel h2{margin:0 0 5px;font-size:19px;color:var(--texto,#17233b)}
+.sugerencia-toolbar p,.sugerencia-panel-head p,.sugerencia-nota{margin:0;color:var(--texto-secundario,#64748b);font-size:13px}
+.sugerencia-panel{background:var(--superficie,#fff);border:1px solid var(--borde,#dbe5f5);border-radius:16px;padding:22px;overflow:hidden}
+.sugerencia-panel-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.sugerencia-actions{display:flex;gap:10px;flex-wrap:wrap}
+.tabla-responsive{width:100%;overflow:auto}
+.tabla-sugerencia{width:100%;border-collapse:collapse;min-width:760px;font-size:14px}
+.tabla-sugerencia th,.tabla-sugerencia td{padding:12px 14px;border-bottom:1px solid var(--borde,#e5eaf3);text-align:left;white-space:normal}
+.tabla-sugerencia th{background:var(--superficie-secundaria,#f1f5f9);font-weight:700;color:var(--texto,#17233b)}
+.tabla-sugerencia tbody tr:hover{background:var(--superficie-secundaria,#f8fafc)}
+.tabla-sugerencia td:last-child{color:#b45309;font-weight:700}
+.sugerencia-nota{margin-top:16px}
+.sugerencia-vacia{text-align:center;padding:42px 20px;background:var(--superficie,#fff);border:1px solid var(--borde,#dbe5f5);border-radius:16px}
+.sugerencia-vacia>i{font-size:32px;color:#16a34a;margin-bottom:12px}
+.sugerencia-vacia h3{margin:8px 0}.sugerencia-vacia p{color:var(--texto-secundario,#64748b);margin-bottom:18px}
+@media(max-width:650px){.sugerencia-toolbar,.sugerencia-panel-head{align-items:flex-start;flex-direction:column}.sugerencia-panel{padding:14px}.sugerencia-actions{width:100%}}
