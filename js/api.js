@@ -4,7 +4,7 @@
    Optimizada para reducir consultas y mejorar velocidad
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwRGgoUUFPggM7gPWPDKF53rUw08VZWEDa3CyUi53N8PyiEAmEABov2QBr_qSjghToN/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxq4o90BbalxbxsOoZCVO3hQ8kSBsBpNu6CSpMKTuXvMsOU-SuyZ2a9z2CM7gx41bc/exec";
 
 /* ==========================================================
    CONFIGURACIÓN DE CACHÉ
