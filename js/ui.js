@@ -90,7 +90,33 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.querySelectorAll('[data-theme]').forEach(b=>b.addEventListener('click',()=>{const x=prefs();x.theme=b.dataset.theme;localStorage.setItem('qualityPreferencias',JSON.stringify(x));aplicarPreferenciasQI()}));
  const fuente=document.getElementById('fuenteSistema');if(fuente)fuente.addEventListener('change',()=>{const x=prefs();x.font=fuente.value;localStorage.setItem('qualityPreferencias',JSON.stringify(x));aplicarPreferenciasQI()});
  document.querySelectorAll('[data-font-size]').forEach(b=>b.addEventListener('click',()=>{const x=prefs();x.fontSize=b.dataset.fontSize;localStorage.setItem('qualityPreferencias',JSON.stringify(x));aplicarPreferenciasQI()}));
- const input=document.getElementById('fotoPerfilInput');if(input)input.addEventListener('change',()=>{const file=input.files&&input.files[0];if(!file)return;if(file.size>2*1024*1024){alert('La foto no debe superar 2 MB.');input.value='';return}const reader=new FileReader();reader.onload=()=>{const k=claveFotoPerfilQI();if(!k){alert('No se pudo identificar el usuario. Inicie sesión nuevamente.');return}try{localStorage.setItem(k,reader.result)}catch(e){alert('No se pudo guardar la foto en este navegador.');return}aplicarPreferenciasQI()};reader.readAsDataURL(file)});
- const del=document.getElementById('eliminarFotoPerfil');if(del)del.addEventListener('click',()=>{const k=claveFotoPerfilQI();if(k)localStorage.removeItem(k);aplicarPreferenciasQI()});
+ const input=document.getElementById('fotoPerfilInput');if(input)input.addEventListener('change',async()=>{const file=input.files&&input.files[0];if(!file)return;if(file.size>5*1024*1024){alert('La foto no debe superar 5 MB.');input.value='';return}
+  try{const dataUrl=await reducirFotoQI(file);const r=await postFotoQI('setFotoPerfil',{foto:dataUrl});if(!r||!r.success){alert((r&&r.message)||'No se pudo guardar la foto en el servidor.');return}
+   const k=claveFotoPerfilQI();if(k)try{localStorage.setItem(k,dataUrl)}catch(e){}aplicarPreferenciasQI();}
+  catch(e){alert('No se pudo guardar la foto: '+(e.message||e))}finally{input.value=''}});
+ const del=document.getElementById('eliminarFotoPerfil');if(del)del.addEventListener('click',async()=>{try{const r=await postFotoQI('eliminarFotoPerfil',{});if(!r||!r.success){alert((r&&r.message)||'No se pudo eliminar la foto en el servidor.');return}}catch(e){alert('No se pudo eliminar la foto: '+(e.message||e));return}const k=claveFotoPerfilQI();if(k)localStorage.removeItem(k);aplicarPreferenciasQI()});
  aplicarPreferenciasQI();pintarDatosCuenta();
 });
+
+
+/* ---------- Foto de perfil centralizada (Google Drive vía Apps Script) ----------
+   La foto vive en el servidor, ligada al usuario de la sesión (token). El
+   localStorage queda solo como copia para mostrarla rápido en este navegador. */
+async function postFotoQI(accion,datos){
+ const token=String(localStorage.getItem('qualityToken')||'').trim();
+ if(!token)return{success:false,message:'La sesión no tiene token. Cierre sesión e ingrese nuevamente.'};
+ const r=await fetch(API_URL,{method:'POST',body:JSON.stringify(Object.assign({},datos,{action:accion,token:token}))});
+ if(!r.ok)throw new Error('HTTP '+r.status);
+ return r.json();
+}
+function reducirFotoQI(file){
+ return new Promise((ok,fallo)=>{const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{URL.revokeObjectURL(url);const L=256,e=Math.min(img.width,img.height),c=document.createElement('canvas');c.width=c.height=L;
+   c.getContext('2d').drawImage(img,(img.width-e)/2,(img.height-e)/2,e,e,0,0,L,L);ok(c.toDataURL('image/jpeg',0.85))};
+  img.onerror=()=>{URL.revokeObjectURL(url);fallo(new Error('No se pudo leer la imagen.'))};img.src=url})
+}
+async function sincronizarFotoPerfilQI(){
+ try{const r=await postFotoQI('getFotoPerfil',{});if(!r||!r.success)return;const k=claveFotoPerfilQI();if(!k)return;
+  if(r.foto)localStorage.setItem(k,r.foto);else localStorage.removeItem(k);aplicarPreferenciasQI()}catch(e){/* sin red: se conserva la copia local */}
+}
+document.addEventListener('DOMContentLoaded',()=>{if(localStorage.getItem('qualityToken'))sincronizarFotoPerfilQI()});

@@ -1,4 +1,4 @@
-const CACHE_NAME = "quality-inventario-v14";
+const CACHE_NAME = "quality-inventario-v2-6";
 
 const FILES = [
     "./",
@@ -8,6 +8,7 @@ const FILES = [
 
     "./css/login.css",
     "./css/home.css",
+    "./css/tema-quality.css",
 
     "./js/api.js",
     "./js/login.js",
@@ -18,6 +19,7 @@ const FILES = [
     "./js/vencimientos.js",
     "./js/pdf-vencimientos.js",
     "./js/ui.js",
+    "./js/gestion.js",
 
     "./assets/logo.png",
     "./assets/icon-192.png",
@@ -77,26 +79,32 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
 
-    if (event.request.method !== "GET") return;
+    const req = event.request;
+
+    if (req.method !== "GET") return;
+
+    // Solo se gestionan archivos de ESTA aplicación. Las llamadas al backend
+    // (script.google.com) y recursos externos pasan directo al navegador:
+    // no se guardan en caché (contienen datos y credenciales) y un fallo de red
+    // ya no se convierte en un "Failed to fetch" sin explicación.
+    if (new URL(req.url).origin !== self.location.origin) return;
 
     event.respondWith(
 
-        fetch(event.request)
+        fetch(req)
             .then(response => {
 
-                const copia = response.clone();
-
-                caches.open(CACHE_NAME)
-                    .then(cache => cache.put(event.request, copia));
+                if (response && response.ok) {
+                    const copia = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(req, copia));
+                }
 
                 return response;
 
             })
-            .catch(() => {
-
-                return caches.match(event.request);
-
-            })
+            .catch(() =>
+                caches.match(req).then(cached => cached || Response.error())
+            )
 
     );
 
