@@ -27,21 +27,8 @@ let rutaActual = {
 
 let indiceMarcas = new Map();
 let indiceCategorias = new Map();
-let mapaLogosMarcas = new Map();
-
-async function cargarLogosMarcas() {
-    try {
-        const respuesta = await fetch(`${API_URL}?action=getMarcas`, { cache: "no-store" });
-        if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-        const datos = await respuesta.json();
-        mapaLogosMarcas.clear();
-        (Array.isArray(datos?.marcas) ? datos.marcas : []).forEach(m => {
-            const nombre = String(m.nombre || m.marca || "").trim().toLocaleLowerCase();
-            const imagen = String(m.imagen || m.logo || "").trim();
-            if (nombre && imagen && !mapaLogosMarcas.has(nombre)) mapaLogosMarcas.set(nombre, imagen);
-        });
-    } catch (e) { console.warn("No se pudieron cargar los logos de Marcas:", e); }
-}
+let indiceLogosMarcas = new Map();
+const cacheImagenesDriveQI = new Map();
 // ==========================================================
 // RENDERIZADO PROGRESIVO DE PRODUCTOS
 // Evita crear cientos de tarjetas al mismo tiempo
@@ -100,22 +87,37 @@ function renderProductosProgresivo(productos, contenedor, lote = 30) {
     );
 }
 function construirIndicesInventario() {
+
     indiceMarcas.clear();
     indiceCategorias.clear();
+
     inventario.forEach(producto => {
-        // En TGU la marca procede de Reactivos.MARCA; no usar el nombre
-        // de la hoja/proveedor como marca. Los vacíos tienen agrupación propia.
-        const marca = String(producto.marca || producto.proveedor || "").trim() || "Sin marca";
-        const categoria = String(producto.categoria || "").trim() || "Sin categoría";
-        producto.marca = marca;
-        producto.proveedor = marca;
-        producto.categoria = categoria;
-        if (!indiceMarcas.has(marca)) indiceMarcas.set(marca, []);
-        indiceMarcas.get(marca).push(producto);
-        const clave = `${marca}|||${categoria}`;
-        if (!indiceCategorias.has(clave)) indiceCategorias.set(clave, []);
-        indiceCategorias.get(clave).push(producto);
+
+        const marca = producto.marca || producto.proveedor || "";
+        const categoria = producto.categoria || "";
+
+        if (marca) {
+
+            if (!indiceMarcas.has(marca)) {
+                indiceMarcas.set(marca, []);
+            }
+
+            indiceMarcas.get(marca).push(producto);
+        }
+
+        if (marca && categoria) {
+
+            const clave = `${marca}|||${categoria}`;
+
+            if (!indiceCategorias.has(clave)) {
+                indiceCategorias.set(clave, []);
+            }
+
+            indiceCategorias.get(clave).push(producto);
+        }
+
     });
+
 }
 // ========================================
 // INICIO
@@ -184,7 +186,19 @@ async function cargarInicio() {
 
     try {
 
-        const datos = await obtenerInicio();
+        const [datos, datosMarcas] = await Promise.all([
+            obtenerInicio(),
+            (typeof obtenerMarcas === "function" ? obtenerMarcas().catch(error => {
+                console.warn("No se pudieron cargar los logotipos de marcas:", error);
+                return { marcas: [] };
+            }) : Promise.resolve({ marcas: [] }))
+        ]);
+
+        indiceLogosMarcas.clear();
+        (Array.isArray(datosMarcas?.marcas) ? datosMarcas.marcas : []).forEach(item => {
+            const clave = normalizarMarcaQI(item?.nombre);
+            if (clave && item?.imagen) indiceLogosMarcas.set(clave, { url: String(item.imagen), fuente: item.imagenFuente || null });
+        });
 
         inventario =
             Array.isArray(datos?.productos)
@@ -192,7 +206,6 @@ async function cargarInicio() {
                 : [];
 
         construirIndicesInventario();
-        await cargarLogosMarcas();
 
         console.log(
             "Productos combinados:",
@@ -403,6 +416,10 @@ console.timeEnd("⏱️ TEGUS + SPS");
             )
             .trim()
             .toUpperCase();
+            const tipoProducto = String(producto.tipo || "reactivo").toLowerCase();
+            // Reactivos y Materiales son catálogos distintos: no fusionar
+            // productos solo porque compartan el mismo código.
+            const claveProducto = `${tipoProducto}|${sku}`;
 
 
             // ==================================
@@ -422,16 +439,18 @@ console.timeEnd("⏱️ TEGUS + SPS");
             // PRODUCTO NUEVO
             // ==================================
 
-            if (!productosAgrupados.has(sku)) {
+            if (!productosAgrupados.has(claveProducto)) {
 
                 productosAgrupados.set(
-                    sku,
+                    claveProducto,
                     {
                         ...producto,
                         sku: sku,
                         stockTotal: 0,
                         stockTGU: 0,
-                        stockSPS: 0,
+                        // SPS Materiales no está integrado todavía: null
+                        // evita presentar un cero que no proviene de la hoja.
+                        stockSPS: tipoProducto === "material" ? null : 0,
                         lotes: []
                     }
                 );
@@ -440,7 +459,7 @@ console.timeEnd("⏱️ TEGUS + SPS");
 
 
             const productoFinal =
-                productosAgrupados.get(sku);
+                productosAgrupados.get(claveProducto);
 
 
             // ==================================
@@ -800,6 +819,30 @@ function ocultarSeccionesPrincipales() {
     });
 }
 
+
+// El menú de reportes se configura de forma independiente para que siga
+// funcionando incluso si otra carga inicial presenta un error.
+function configurarCentroReportesQI() {
+    const boton = document.getElementById("btnCentroReportes");
+    const grupo = document.getElementById("grupoReportes");
+    const submenu = document.getElementById("subReportes");
+    if (!boton || !grupo || !submenu || boton.dataset.qiReportBound === "1") return;
+    boton.dataset.qiReportBound = "1";
+    const abiertoInicial = grupo.classList.contains("open");
+    submenu.hidden = !abiertoInicial;
+    submenu.style.display = abiertoInicial ? "flex" : "none";
+    boton.setAttribute("aria-expanded", abiertoInicial ? "true" : "false");
+    boton.addEventListener("click", (evento) => {
+        evento.preventDefault();
+        const abierto = boton.getAttribute("aria-expanded") !== "true";
+        grupo.classList.toggle("open", abierto);
+        submenu.hidden = !abierto;
+        submenu.style.display = abierto ? "flex" : "none";
+        boton.setAttribute("aria-expanded", abierto ? "true" : "false");
+    });
+}
+document.addEventListener("DOMContentLoaded", configurarCentroReportesQI);
+
 // ========================================
 // MENU
 // ========================================
@@ -883,77 +926,214 @@ if (menuAlmacen) {
 }
 
 
+// Normalización para emparejar marcas del inventario con la pestaña Marcas de TGU.
+function normalizarMarcaQI(valor) {
+    return String(valor || "").trim().normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function extraerIdDriveQI(url) {
+    const texto = String(url || "");
+    const m = texto.match(/(?:\/file\/d\/|\/d\/|[?&]id=)([A-Za-z0-9_-]{10,})/);
+    return m ? m[1] : "";
+}
+
+async function obtenerImagenDriveQI(url, fuenteCelda = null) {
+    const original = String(url || "").trim();
+    const id = extraerIdDriveQI(original);
+    if (!original && !fuenteCelda) return "";
+    const clave = fuenteCelda ? JSON.stringify(fuenteCelda) : (id || original);
+    const cacheado = cacheImagenesDriveQI.get(clave);
+    if (cacheado && Date.now() - cacheado.timestamp < cacheado.ttl) return cacheado.src;
+    const token = String(localStorage.getItem("qualityToken") || "").trim();
+    if (!token) return "";
+    try {
+        const resp = await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "getImagenDrive", token, fileId: id, url: original, fuente: fuenteCelda })
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data?.success) {
+            console.warn("No se pudo recuperar la imagen desde el servidor:", data?.message || ("HTTP " + resp.status));
+            return "";
+        }
+        const src = String(data.dataUrl || data.imageUrl || "");
+        if (src) {
+            // Las content URLs de Google son temporales; no conservarlas tanto
+            // como los data URLs que ya contienen la imagen.
+            const ttl = (data.temporal || /googleusercontent\.com/i.test(src)) ? 30 * 1000 : 5 * 60 * 1000;
+            cacheImagenesDriveQI.set(clave, { timestamp: Date.now(), src, ttl });
+        }
+        return src;
+    } catch (error) {
+        console.warn("No se pudo recuperar la imagen protegida de Drive/Sheets:", error);
+        return "";
+    }
+}
+
+function esUrlProxyableQI(url) {
+    try {
+        const u = new URL(String(url || ""));
+        const host = u.hostname.toLowerCase();
+        return (host === "qualityhn.com" || host === "www.qualityhn.com") && u.pathname.toLowerCase().startsWith("/wp-content/uploads/");
+    } catch (e) { return false; }
+}
+
+function cargarImagenConRespaldoQI(img, url, alFallar, fuenteCelda = null) {
+    if (!img || (!url && !fuenteCelda)) { if (alFallar) alFallar(); return; }
+    const original = String(url || "").trim();
+    const instancia = (Number(img.dataset.qiInstancia || 0) + 1);
+    img.dataset.qiInstancia = String(instancia);
+    let finalizada = false;
+    let proxyIntentado = false;
+    const fallar = () => { if (finalizada) return; finalizada = true; if (alFallar) alFallar(); };
+    const asignar = (src) => {
+        if (img.dataset.qiInstancia !== String(instancia) || !src) return;
+        img.onerror = () => intentarProxy();
+        img.src = src;
+    };
+    const intentarProxy = () => {
+        if (proxyIntentado) { fallar(); return; }
+        // Resolver mediante Apps Script solo si es una imagen insertada en celda,
+        // o si una URL pública de Quality no pudo cargarse directamente.
+        if (!fuenteCelda && !esUrlProxyableQI(original)) { fallar(); return; }
+        proxyIntentado = true;
+        img.dataset.qiProxyIntentado = "1";
+        obtenerImagenDriveQI(original, fuenteCelda).then(src => {
+            if (img.dataset.qiInstancia !== String(instancia)) return;
+            if (src) asignar(src); else fallar();
+        }).catch(fallar);
+    };
+
+    img.dataset.qiUrlOriginal = original;
+    img.dataset.qiProxyIntentado = "0";
+    img.referrerPolicy = "strict-origin-when-cross-origin";
+
+    // CellImage: no usar el content URL guardado en caché. Solicitar al backend
+    // una URL fresca de la celda, o el blob convertido a data URL.
+    const urlGoogleTemporal = /googleusercontent\.com/i.test(original);
+    if (fuenteCelda && (!original || urlGoogleTemporal)) {
+        proxyIntentado = true;
+        img.dataset.qiProxyIntentado = "1";
+        obtenerImagenDriveQI(original, fuenteCelda).then(src => {
+            if (img.dataset.qiInstancia !== String(instancia)) return;
+            if (src) asignar(src);
+            else if (original) asignar(original);
+            else fallar();
+        }).catch(() => { if (original) asignar(original); else fallar(); });
+    } else if (original) {
+        img.onerror = () => intentarProxy();
+        img.src = original;
+    } else {
+        intentarProxy();
+    }
+}
+
+function crearLogoMarcaQI(marca, clase = "brand-logo") {
+    const caja = document.createElement("div");
+    caja.className = clase;
+    const logo = indiceLogosMarcas.get(normalizarMarcaQI(marca));
+    const url = logo && logo.url ? logo.url : "";
+    if (url) {
+        const img = document.createElement("img");
+        img.alt = "Logotipo " + marca;
+        img.loading = "lazy";
+        cargarImagenConRespaldoQI(img, url, () => {
+            img.remove();
+            const icono = document.createElement("i");
+            icono.className = "fas fa-tag";
+            icono.setAttribute("aria-hidden", "true");
+            caja.appendChild(icono);
+        }, logo.fuente || null);
+        caja.appendChild(img);
+    } else {
+        const icono = document.createElement("i");
+        icono.className = "fas fa-tag";
+        icono.setAttribute("aria-hidden", "true");
+        caja.appendChild(icono);
+    }
+    return caja;
+}
+
+function obtenerDatosImagenPrincipalQI(producto) {
+    if (!producto) return { url: "", fuente: null };
+    if (producto.imagen || producto.imagenFuente) return { url: String(producto.imagen || ""), fuente: producto.imagenFuente || null };
+    const refs = [
+        [producto.foto1 || producto.ref1 || producto.referencia1, producto.foto1Tipo, producto.foto1Fuente],
+        [producto.foto2 || producto.ref2 || producto.referencia2, producto.foto2Tipo, producto.foto2Fuente]
+    ];
+    for (const [valor, clase, fuente] of refs) {
+        const ref = String(valor || "").trim();
+        const tipoRef = String(clase || "").toLowerCase();
+        if ((ref || fuente) && (tipoRef === "imagen" || !!fuente || esUrlDeImagen(ref) ||
+            /drive\.google\.com\/(?:file\/d|thumbnail|uc|open)/i.test(ref) ||
+            /googleusercontent\.com/i.test(ref))) {
+            return { url: ref, fuente: fuente || null };
+        }
+    }
+    return { url: "", fuente: null };
+}
+
+function obtenerImagenPrincipalQI(producto) {
+    return obtenerDatosImagenPrincipalQI(producto).url;
+}
+
+function abrirVisorReferenciaQI(src, titulo, fuenteCelda = null) {
+    let visor = document.getElementById("visorReferenciaQI");
+    if (!visor) {
+        visor = document.createElement("div");
+        visor.id = "visorReferenciaQI";
+        visor.className = "qi-image-viewer";
+        visor.innerHTML = '<button type="button" class="qi-image-viewer-close" aria-label="Cerrar imagen">×</button><img alt="Referencia ampliada"><p></p>';
+        document.body.appendChild(visor);
+        visor.querySelector("button").addEventListener("click", () => visor.classList.remove("open"));
+        visor.addEventListener("click", e => { if (e.target === visor) visor.classList.remove("open"); });
+        document.addEventListener("keydown", e => { if (e.key === "Escape") visor.classList.remove("open"); });
+    }
+    const img = visor.querySelector("img");
+    img.alt = titulo || "Referencia";
+    cargarImagenConRespaldoQI(img, src, () => { img.alt = "No se pudo cargar la imagen"; }, fuenteCelda);
+    visor.querySelector("p").textContent = titulo || "Referencia";
+    visor.classList.add("open");
+}
+
 // ========================================
 // MOSTRAR MARCAS
 // ========================================
 function mostrarMarcas() {
-
     filtroEstadoActivo = "";
-
     rutaActual.marca = "";
     rutaActual.categoria = "";
-
     mostrarDashboardCards(true);
-
-    const contenedor =
-        document.getElementById("productList");
-
+    const contenedor = document.getElementById("productList");
     if (!contenedor) return;
-
     contenedor.innerHTML = "";
-    document.getElementById("toolbarSugerenciaPedido")?.remove();
-    const marcas =
-        Array.from(indiceMarcas.keys())
-            .filter(Boolean)
-            .sort();
-
-    const fragment =
-        document.createDocumentFragment();
-
+    const marcas = Array.from(indiceMarcas.keys()).filter(Boolean).sort();
+    const fragment = document.createDocumentFragment();
     marcas.forEach(marca => {
-
-        const cantidad =
-            indiceMarcas.get(marca)?.length || 0;
-
-        const div =
-            document.createElement("div");
-
-        div.className = "product-card";
-
-        const logoMarca = mapaLogosMarcas.get(String(marca).trim().toLocaleLowerCase()) || "";
-        div.classList.add("brand-card");
-        div.innerHTML = `
-            <div class="brand-logo-wrap">${logoMarca ? `<img class="brand-logo" src="${logoMarca.replace(/"/g, "&quot;")}" alt="Logo ${marca.replace(/"/g, "&quot;")}" loading="lazy">` : '<span class="brand-logo-placeholder"><i class="fas fa-tags"></i></span>'}</div>
-            <div class="product-info">
-                <h3>${marca}</h3>
-                <p>${cantidad} productos</p>
-            </div>
-            <button class="btn-detail">Abrir</button>
-        `;
-        const logoImg = div.querySelector(".brand-logo");
-        if (logoImg) logoImg.onerror = () => { logoImg.replaceWith(Object.assign(document.createElement("span"), {className:"brand-logo-placeholder", innerHTML:'<i class="fas fa-tags"></i>'})); };
-
-        div.onclick = () => {
-
-            rutaActual.marca = marca;
-            rutaActual.categoria = "";
-
-            mostrarCategorias(marca);
-
-        };
-
+        const cantidad = indiceMarcas.get(marca)?.length || 0;
+        const div = document.createElement("div");
+        div.className = "product-card catalog-card brand-card";
+        div.appendChild(crearLogoMarcaQI(marca));
+        const info = document.createElement("div");
+        info.className = "product-info";
+        const h3 = document.createElement("h3"); h3.textContent = marca;
+        const p = document.createElement("p"); p.textContent = cantidad + " productos";
+        info.append(h3, p);
+        div.appendChild(info);
+        const btn = document.createElement("button"); btn.className = "btn-detail"; btn.type = "button"; btn.textContent = "Abrir";
+        btn.addEventListener("click", e => { e.stopPropagation(); div.click(); });
+        div.appendChild(btn);
+        div.addEventListener("click", () => {
+            rutaActual.marca = marca; rutaActual.categoria = ""; mostrarCategorias(marca);
+        });
         fragment.appendChild(div);
-
     });
-
     contenedor.appendChild(fragment);
-
     actualizarBreadcrumb();
-
 }
 function mostrarCategorias(marca) {
 
-    document.getElementById("toolbarSugerenciaPedido")?.remove();
     filtroEstadoActivo = "";
 
     rutaActual.marca = marca;
@@ -994,26 +1174,22 @@ function mostrarCategorias(marca) {
 
         div.className = "product-card";
 
-        div.innerHTML = `
-            <div class="product-info">
-                <h3><i class="fas fa-folder-open"></i> ${categoria}</h3>
-                <p>${cantidad} productos</p>
-            </div>
-
-            <button class="btn-detail">
-                Abrir
-            </button>
-        `;
+        div.className = "product-card catalog-card category-card";
+        div.appendChild(crearLogoMarcaQI(marca, "brand-logo category-logo"));
+        const infoCategoria = document.createElement("div");
+        infoCategoria.className = "product-info";
+        const tituloCategoria = document.createElement("h3"); tituloCategoria.textContent = categoria;
+        const textoCategoria = document.createElement("p"); textoCategoria.textContent = cantidad + " productos";
+        infoCategoria.append(tituloCategoria, textoCategoria);
+        div.appendChild(infoCategoria);
+        const btnCategoria = document.createElement("button");
+        btnCategoria.className = "btn-detail"; btnCategoria.type = "button"; btnCategoria.textContent = "Abrir";
+        btnCategoria.addEventListener("click", e => { e.stopPropagation(); div.click(); });
+        div.appendChild(btnCategoria);
 
         div.onclick = () => {
-
             rutaActual.categoria = categoria;
-
-            mostrarProductos(
-                marca,
-                categoria
-            );
-
+            mostrarProductos(marca, categoria);
         };
 
         fragment.appendChild(div);
@@ -1032,7 +1208,6 @@ function mostrarCategorias(marca) {
 
 function mostrarProductos(marca, categoria) {
 
-    document.getElementById("toolbarSugerenciaPedido")?.remove();
     filtroEstadoActivo = "";
 
     rutaActual.marca = marca;
@@ -1101,126 +1276,58 @@ function crearCarpeta(titulo, texto, accion) {
 
 
 // ========================================
-// SUGERENCIA DE PEDIDO DENTRO DE ALMACÉN
-// Datos exclusivamente desde Reactivos (TGU) vía endpoint de GS.
-// ========================================
-async function mostrarSugerenciaPedido() {
-    const almacen = document.getElementById("seccionAlmacen");
-    const formEntrada = document.getElementById("formEntrada");
-    const formSalida = document.getElementById("formSalida");
-    const tabs = document.querySelector("#seccionAlmacen .almacen-tabs");
-    const panel = document.getElementById("panelSugerenciaAlmacen");
-    if (!almacen || !panel) return;
-
-    if (formEntrada) formEntrada.style.display = "none";
-    if (formSalida) formSalida.style.display = "none";
-    if (tabs) tabs.style.display = "none";
-    panel.style.display = "block";
-    panel.innerHTML = '<div class="sugerencia-panel"><p>Cargando sugerencia de pedido de Tegucigalpa…</p></div>';
-
-    document.getElementById("tituloPagina").textContent = "Almacén";
-    document.getElementById("subtituloPagina").textContent = "Entradas, salidas y sugerencias de reposición · Tegucigalpa";
-    document.getElementById("seccionResultados").style.display = "none";
-    document.getElementById("seccionMovimientos").style.display = "none";
-    document.getElementById("seccionVencimientos").style.display = "none";
-    almacen.style.display = "block";
-
-    try {
-        // Este endpoint lee directamente la pestaña Reactivos del archivo TGU; no usa el inventario combinado SPS+TGU.
-        const respuesta = await fetch(`${API_URL}?action=getReporteReposicionTGU&forzar=1`, {cache:"no-store"});
-        if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-        const datos = await respuesta.json();
-        if (datos.error) throw new Error(datos.mensaje || datos.message || "El servidor no pudo leer Reactivos de TGU.");
-        const pedidos = Array.isArray(datos.productos) ? datos.productos.map(p => ({
-            codigo:p.codigo || "", producto:p.producto || "", marca:p.marca || "Sin marca",
-            categoria:p.categoria || "Sin categoría", existencia:Number(p.existencia)||0,
-            minimo:Number(p.minimo)||0, sugerida:Math.max(0,Number(p.cantidadSugerida ?? p.sugerida)||0)
-        })) : [];
-
-        const filas = pedidos.map(p => `<tr><td>${escaparHTML(p.codigo)}</td><td>${escaparHTML(p.producto)}</td><td>${escaparHTML(p.marca)}</td><td>${escaparHTML(p.categoria)}</td><td>${p.existencia}</td><td>${p.minimo}</td><td><strong>${p.sugerida}</strong></td></tr>`).join("");
-        panel.innerHTML = `<div class="sugerencia-panel"><div class="sugerencia-panel-head"><div><h2>Productos que requieren reposición · TGU</h2><p>${pedidos.length} producto(s) de Reactivos por debajo del mínimo requerido.</p></div><div class="sugerencia-actions"><button class="btn-secundario" id="btnExportarSugerenciaAlmacen"><i class="fas fa-file-excel"></i> Exportar a Excel</button><button class="btn-detail" id="btnCerrarSugerenciaAlmacen"><i class="fas fa-arrow-left"></i> Volver a Almacén</button></div></div>${pedidos.length ? `<div class="tabla-responsive"><table class="tabla-sugerencia"><thead><tr><th>Código</th><th>Producto</th><th>Marca</th><th>Categoría</th><th>Existencia TGU</th><th>Mínimo requerido</th><th>Cantidad sugerida</th></tr></thead><tbody>${filas}</tbody></table></div><p class="sugerencia-nota">Solo se consulta Reactivos de Tegucigalpa. Cálculo: mínimo requerido − existencia TGU. Los productos sin mínimo configurado no se incluyen.</p>` : '<div class="sugerencia-vacia"><i class="fas fa-circle-check"></i><h3>Sin productos pendientes de reposición</h3><p>No hay productos de TGU por debajo de su mínimo configurado.</p></div>'}</div>`;
-        document.getElementById("btnCerrarSugerenciaAlmacen").onclick = cerrarSugerenciaPedido;
-        document.getElementById("btnExportarSugerenciaAlmacen")?.addEventListener("click", () => exportarSugerenciaExcel(pedidos.map(p=>({codigo:p.codigo,producto:p.producto,marca:p.marca,categoria:p.categoria,existencia:p.existencia,minimo:p.minimo,sugerida:p.sugerida}))));
-    } catch (error) {
-        panel.innerHTML = `<div class="sugerencia-panel"><h2>No se pudo cargar la sugerencia</h2><p>${escaparHTML(error.message || "Error de conexión")}</p><button class="btn-detail" id="btnCerrarSugerenciaAlmacen">Volver a Almacén</button></div>`;
-        document.getElementById("btnCerrarSugerenciaAlmacen").onclick = cerrarSugerenciaPedido;
-    }
-}
-
-function cerrarSugerenciaPedido() {
-    const panel = document.getElementById("panelSugerenciaAlmacen");
-    const tabs = document.querySelector("#seccionAlmacen .almacen-tabs");
-    const formEntrada = document.getElementById("formEntrada");
-    const formSalida = document.getElementById("formSalida");
-    if (panel) { panel.style.display = "none"; panel.innerHTML = ""; }
-    if (tabs) tabs.style.display = "flex";
-    if (formEntrada) formEntrada.style.display = "grid";
-    if (formSalida) formSalida.style.display = "none";
-    document.getElementById("tabEntrada")?.classList.add("active");
-    document.getElementById("tabSalida")?.classList.remove("active");
-}
-
-function escaparHTML(valor) {
-    return String(valor ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-// Genera un libro XML Spreadsheet compatible con Excel (archivo .xls real, no CSV renombrado).
-function exportarSugerenciaExcel(pedidos) {
-    const columnas = ["Código","Producto","Marca","Categoría","Existencia","Mínimo requerido","Cantidad sugerida"];
-    const esc = v => escaparHTML(v);
-    const encabezado = columnas.map(v => `<Cell><Data ss:Type="String">${esc(v)}</Data></Cell>`).join("");
-    const filas = pedidos.map(p => `<Row>${[p.codigo,p.producto,p.marca,p.categoria,p.existencia,p.minimo,p.sugerida].map((v,i)=>`<Cell><Data ss:Type="${i>=4?"Number":"String"}">${esc(v)}</Data></Cell>`).join("")}</Row>`).join("");
-    const xml = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Sugerencia de pedido"><Table><Row>${encabezado}</Row>${filas}</Table></Worksheet></Workbook>`;
-    const blob = new Blob([xml], {type:"application/vnd.ms-excel;charset=utf-8;"});
-    const url = URL.createObjectURL(blob); const a = document.createElement("a");
-    a.href = url; a.download = "sugerencia-de-pedido-TGU.xls"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-}
-
-// ========================================
 // RENDER TARJETA DE PRODUCTO
 // ========================================
 
 
 function renderProductCard(producto, contenedor) {
-
-    const div = document.createElement("div");
-
-    div.className = "product-card";
-
-    const imagen = String(producto.imagen || "").trim();
-    div.innerHTML = `
-        <div class="product-card-image" aria-label="Imagen del producto">
-          ${imagen ? `<img src="${imagen.replace(/"/g, '&quot;')}" alt="${String(producto.nombre || 'Producto').replace(/"/g, '&quot;')}" loading="lazy">` : '<span class="product-image-placeholder"><i class="fas fa-flask"></i></span>'}
-        </div>
-        <div class="product-info">
-            <h3>${producto.nombre || "Sin nombre"}</h3>
-            <p>SKU: ${producto.sku || "—"}</p>
-            <p>Marca: ${producto.marca || producto.proveedor || "Sin marca"}</p>
-            <p>Categoría: ${producto.categoria || "Sin categoría"}</p>
-            <p>Stock: ${producto.stockTotal ?? 0}</p>
-        </div>
-        <button class="btn-detail">
-            <i class="fas fa-eye"></i>
-            Ver detalles
-        </button>
-    `;
-    // El mínimo requerido se muestra en Sugerencia de pedido y en el detalle,
-    // nunca en la tarjeta resumida del catálogo.
-    div.querySelectorAll('.fila-minimo-requerido, .detalle-fila-minimo-requerido, #detalleFilaMinimoRequerido').forEach(el => el.remove());
-    const cardImg = div.querySelector('.product-card-image img');
-    if (cardImg) cardImg.onerror = () => { cardImg.replaceWith(Object.assign(document.createElement('span'), {className:'product-image-placeholder', innerHTML:'<i class="fas fa-flask"></i>'})); };
-
-    div.querySelector(".btn-detail").onclick = (e) => {
-
-        e.stopPropagation();
-
-        verDetalleProducto(producto);
-
-    };
-
+    const div = document.createElement("article");
+    div.className = "product-card product-card-product";
+    const datosImagen = obtenerDatosImagenPrincipalQI(producto);
+    const urlImagen = datosImagen.url;
+    const marco = document.createElement("div");
+    marco.className = "product-thumb";
+    if (urlImagen || datosImagen.fuente) {
+        const img = document.createElement("img");
+        img.alt = producto.nombre || "Imagen del producto";
+        img.loading = "lazy";
+        img.decoding = "async";
+        cargarImagenConRespaldoQI(img, urlImagen, () => {
+            marco.classList.add("sin-imagen");
+            marco.replaceChildren();
+            const icono = document.createElement("i"); icono.className = "fas fa-box-open";
+            marco.appendChild(icono);
+        }, datosImagen.fuente);
+        marco.appendChild(img);
+    } else {
+        marco.classList.add("sin-imagen");
+        const icono = document.createElement("i"); icono.className = "fas fa-box-open";
+        marco.appendChild(icono);
+    }
+    const info = document.createElement("div");
+    info.className = "product-info";
+    const h3 = document.createElement("h3"); h3.textContent = producto.nombre || "Sin nombre";
+    const detalles = [
+        ["SKU", producto.sku || "—"],
+        ["Marca", producto.marca || producto.proveedor || "—"],
+        ["Categoría", producto.categoria || "—"],
+        ["Existencias", producto.stockTotal ?? 0]
+    ];
+    info.appendChild(h3);
+    detalles.forEach(([label, value]) => {
+        const p = document.createElement("p");
+        const strong = document.createElement("strong"); strong.textContent = label + ": ";
+        p.append(strong, document.createTextNode(String(value)));
+        info.appendChild(p);
+    });
+    const btn = document.createElement("button");
+    btn.className = "btn-detail"; btn.type = "button";
+    btn.innerHTML = '<i class="fas fa-eye" aria-hidden="true"></i> Ver detalles';
+    btn.addEventListener("click", e => { e.stopPropagation(); verDetalleProducto(producto); });
+    div.append(marco, info, btn);
+    div.addEventListener("click", () => verDetalleProducto(producto));
     contenedor.appendChild(div);
-
 }
-
 
 // ========================================
 // BREADCRUMB
@@ -1627,49 +1734,59 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btn) btn.addEventListener("click", copiarDetalleProducto);
 });
 
-/** true si el texto es una URL que corresponde a una imagen. */
+/** Detecta URL de imagen, incluidos enlaces de Drive sin extensión visible. */
 function esUrlDeImagen(texto) {
-    if (/^data:image\//i.test(texto)) return true;
-    if (!/^https?:\/\//i.test(texto)) return false;
-    return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(texto)
-        || /^https?:\/\/drive\.google\.com\/(thumbnail|uc)\b/i.test(texto)
-        || /^https?:\/\/[a-z0-9-]+\.googleusercontent\.com\//i.test(texto);
+    if (/^data:image\//i.test(String(texto || ""))) return true;
+    const t = String(texto || "").trim();
+    if (!/^https?:\/\//i.test(t)) return false;
+    return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(t)
+        || /drive\.google\.com\/(thumbnail|uc|file)\b/i.test(t)
+        || /googleusercontent\.com\//i.test(t)
+        || /[?&]id=[A-Za-z0-9_-]{10,}/i.test(t);
 }
 
-/**
- * Crea el bloque de UNA referencia (texto, enlace o imagen). Devuelve null si
- * la referencia está vacía, sin afectar a la otra referencia.
- */
-function crearBloqueReferencia(titulo, valor) {
-    if (valor === null || valor === undefined) return null;
-    const texto = String(valor).trim();
-    if (!texto) return null;
-
+function crearBloqueReferencia(titulo, valor, tipo, fuenteCelda = null) {
+    const clase = String(tipo || (typeof valor === "object" ? valor.tipo : "") || "").toLowerCase();
+    const tieneFuenteImagen = !!fuenteCelda && clase === "imagen";
+    if ((valor === null || valor === undefined || valor === "") && !tieneFuenteImagen) return null;
+    const contenido = (typeof valor === "object" && valor.url) ? String(valor.url) : String(valor || "").trim();
+    if (!contenido && !tieneFuenteImagen) return null;
     const bloque = document.createElement("div");
     bloque.className = "referencia-material";
     const etiqueta = document.createElement("strong");
     etiqueta.textContent = titulo;
     bloque.appendChild(etiqueta);
 
-    const enlace = () => {
-        const a = document.createElement("a");
-        a.href = texto; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Ver referencia";
-        return a;
-    };
-
-    if (esUrlDeImagen(texto)) {
+    const esImagen = clase === "imagen" || tieneFuenteImagen || esUrlDeImagen(contenido) ||
+        /drive\.google\.com\/(?:file\/d|thumbnail|uc)/i.test(contenido) || /googleusercontent\.com/i.test(contenido);
+    const esEnlace = !esImagen && (clase === "enlace" || /^https?:\/\//i.test(contenido));
+    if (esImagen) {
+        const boton = document.createElement("button");
+        boton.type = "button"; boton.className = "referencia-imagen-btn";
+        boton.setAttribute("aria-label", "Ampliar " + titulo);
         const img = document.createElement("img");
-        img.src = texto; img.alt = titulo; img.loading = "lazy";
-        img.style.maxWidth = "140px"; img.style.maxHeight = "120px";
-        img.style.display = "block"; img.style.objectFit = "contain";
-        // Si la imagen no carga (permisos, enlace roto), ofrecer el enlace.
-        img.onerror = () => { if (/^https?:/i.test(texto)) img.replaceWith(enlace()); else img.remove(); };
-        bloque.appendChild(img);
-    } else if (/^https?:\/\//i.test(texto)) {
-        bloque.appendChild(enlace());
+        img.src = ""; img.alt = titulo; img.loading = "lazy"; img.decoding = "async";
+        cargarImagenConRespaldoQI(img, contenido, () => {
+            if (/^https?:\/\//i.test(contenido) && clase !== "imagen") {
+                const a = document.createElement("a");
+                a.href = contenido; a.target = "_blank"; a.rel = "noopener noreferrer";
+                a.textContent = "Abrir referencia";
+                bloque.replaceChildren(etiqueta, a);
+            } else {
+                boton.classList.add("referencia-sin-imagen");
+                img.remove();
+                const aviso = document.createElement("span"); aviso.textContent = "No se pudo cargar la imagen";
+                boton.appendChild(aviso);
+            }
+        }, fuenteCelda);
+        boton.appendChild(img);
+        boton.addEventListener("click", () => abrirVisorReferenciaQI(img.src || contenido, titulo, fuenteCelda));
+        bloque.appendChild(boton);
+    } else if (esEnlace) {
+        const a = document.createElement("a"); a.href = contenido; a.target = "_blank"; a.rel = "noopener noreferrer";
+        a.textContent = "Abrir referencia"; bloque.appendChild(a);
     } else {
-        const div = document.createElement("div");
-        div.textContent = texto;
+        const div = document.createElement("div"); div.className = "referencia-texto"; div.textContent = contenido;
         bloque.appendChild(div);
     }
     return bloque;
@@ -1678,22 +1795,6 @@ function crearBloqueReferencia(titulo, valor) {
 function verDetalleProducto(producto) {
     productoDetalleActual = producto;
 
-    // Imagen principal procedente de Reactivos.IMAGEN. Se mantiene dentro
-    // del modal y con object-fit:contain para evitar recortes o deformación.
-    const nombreDetalle = document.getElementById("detalleNombre");
-    let imagenDetalle = document.getElementById("detalleImagenProducto");
-    if (!imagenDetalle) {
-        imagenDetalle = document.createElement("div");
-        imagenDetalle.id = "detalleImagenProducto";
-        imagenDetalle.className = "detalle-imagen-producto";
-        nombreDetalle?.insertAdjacentElement("afterend", imagenDetalle);
-    }
-    const urlImagen = String(producto.imagen || "").trim();
-    imagenDetalle.innerHTML = urlImagen
-        ? `<img src="${urlImagen.replace(/"/g, '&quot;')}" alt="${String(producto.nombre || 'Producto').replace(/"/g, '&quot;')}">`
-        : '<span class="product-image-placeholder"><i class="fas fa-flask"></i> Sin imagen</span>';
-    const imagenModal = imagenDetalle.querySelector('img');
-    if (imagenModal) imagenModal.onerror = () => { imagenDetalle.innerHTML = '<span class="product-image-placeholder"><i class="fas fa-flask"></i> Sin imagen</span>'; };
 
     // DATOS PRINCIPALES
 
@@ -1716,22 +1817,35 @@ function verDetalleProducto(producto) {
     document.getElementById("detalleStock").textContent =
         producto.stockTotal ?? 0;
 
-    // El mínimo requerido procede exclusivamente de Reactivos.MÍNIMO REQUERIDO.
-    let filaMinimo = document.getElementById("detalleFilaMinimoRequerido");
-    if (!filaMinimo) {
-        filaMinimo = document.createElement("p");
-        filaMinimo.id = "detalleFilaMinimoRequerido";
-        filaMinimo.innerHTML = '<strong>Mínimo requerido:</strong> <span id="detalleMinimoRequerido"></span>';
-        const filaStock = document.getElementById("detalleStock")?.closest("p");
-        if (filaStock) filaStock.insertAdjacentElement("afterend", filaMinimo);
-    }
-    const valorMinimo = producto.minimoRequerido;
-    const textoMinimo = (valorMinimo === null || valorMinimo === undefined || String(valorMinimo).trim() === "")
-        ? "Sin mínimo configurado" : String(valorMinimo);
-    const spanMinimo = document.getElementById("detalleMinimoRequerido");
-    if (spanMinimo) spanMinimo.textContent = textoMinimo;
-
     const esMaterial = esProductoSinLotes(producto);
+
+    // Mostrar la imagen principal también en la ficha, antes de los datos.
+    let cajaImagenProducto = document.getElementById("detalleImagenProducto");
+    if (!cajaImagenProducto) {
+        cajaImagenProducto = document.createElement("div");
+        cajaImagenProducto.id = "detalleImagenProducto";
+        cajaImagenProducto.className = "detalle-imagen-producto";
+        const titulo = document.getElementById("detalleNombre");
+        if (titulo) titulo.insertAdjacentElement("afterend", cajaImagenProducto);
+    }
+    cajaImagenProducto.replaceChildren();
+    const datosImagenDetalle = obtenerDatosImagenPrincipalQI(producto);
+    const imagenDetalle = datosImagenDetalle.url;
+    if (imagenDetalle || datosImagenDetalle.fuente) {
+        const imgDetalle = document.createElement("img");
+        imgDetalle.alt = "Imagen de " + (producto.nombre || "producto");
+        imgDetalle.loading = "eager";
+        imgDetalle.decoding = "async";
+        cargarImagenConRespaldoQI(imgDetalle, imagenDetalle, () => {
+            cajaImagenProducto.style.display = "none";
+            cajaImagenProducto.replaceChildren();
+        }, datosImagenDetalle.fuente);
+        cajaImagenProducto.appendChild(imgDetalle);
+        cajaImagenProducto.style.display = "flex";
+        imgDetalle.addEventListener("click", () => abrirVisorReferenciaQI(imgDetalle.src || imagenDetalle, producto.nombre || "Producto", datosImagenDetalle.fuente));
+    } else {
+        cajaImagenProducto.style.display = "none";
+    }
 
     // Los bloques existen en home.html; si el navegador conserva un home.html
     // antiguo en caché, se crean aquí en el mismo orden (stock > bodegas >
@@ -1768,9 +1882,13 @@ function verDetalleProducto(producto) {
     // ---- Existencias por bodega (solo Materiales/Repuestos) ----
     if (esMaterial) {
         const stock = obtenerStockPorBodega(producto);
-        stockBodegas.innerHTML =
-            `<div><strong>Tegucigalpa:</strong> ${textoCantidad(stock.tgu)}</div>` +
-            `<div><strong>San Pedro Sula:</strong> ${textoCantidad(stock.sps)}</div>`;
+        const filasStock = [`<div><strong>Tegucigalpa:</strong> ${textoCantidad(stock.tgu)}</div>`];
+        // Materiales solo tiene fuente integrada de TGU en esta fase. No mostrar
+        // una fila SPS vacía ni sugerir que ese inventario fue consultado.
+        if (stock.sps !== null && stock.sps !== undefined) {
+            filasStock.push(`<div><strong>San Pedro Sula:</strong> ${textoCantidad(stock.sps)}</div>`);
+        }
+        stockBodegas.innerHTML = filasStock.join("");
         stockBodegas.style.display = "grid";
     } else {
         stockBodegas.innerHTML = "";
@@ -1786,9 +1904,9 @@ function verDetalleProducto(producto) {
     referencias.innerHTML = "";
     let hayReferencias = false;
     if (esMaterial) {
-        [["Referencia 1", producto.foto1 ?? producto.ref1 ?? producto.referencia1],
-         ["Referencia 2", producto.foto2 ?? producto.ref2 ?? producto.referencia2]].forEach(([titulo, valor]) => {
-            const bloque = crearBloqueReferencia(titulo, valor);
+        [["Referencia 1", producto.foto1 ?? producto.ref1 ?? producto.referencia1, producto.foto1Tipo, producto.foto1Fuente],
+         ["Referencia 2", producto.foto2 ?? producto.ref2 ?? producto.referencia2, producto.foto2Tipo, producto.foto2Fuente]].forEach(([titulo, valor, tipo, fuente]) => {
+            const bloque = crearBloqueReferencia(titulo, valor, tipo, fuente);
             if (bloque) { referencias.appendChild(bloque); hayReferencias = true; }
         });
     }

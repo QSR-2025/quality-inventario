@@ -9,12 +9,13 @@
 
 <title>Quality Inventario</title>
 
-<meta name="theme-color" content="#0b5ed7">
+<meta name="theme-color" content="#0648C7">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/tema-quality.css">
 
 
 <link rel="stylesheet"
@@ -72,15 +73,24 @@ Inventario
     <span>Almacén</span>
 </a>
 
-<a id="menuMovimientos">
-    <i class="fas fa-clock-rotate-left"></i>
-    <span>Movimientos</span>
-</a>
 
-<a id="menuVencimientos">
-    <i class="fas fa-calendar-xmark"></i>
-    <span>Vencimientos</span>
-</a>
+<div class="nav-group" id="grupoReportes">
+    <button type="button" class="nav-group-btn" id="btnCentroReportes" aria-expanded="false" aria-controls="subReportes">
+        <i class="fas fa-chart-column"></i>
+        <span>Centro de reportes</span>
+        <i class="fas fa-chevron-down nav-chevron"></i>
+    </button>
+    <div class="nav-sub" id="subReportes">
+        <a id="menuMovimientos">
+            <i class="fas fa-clock-rotate-left"></i>
+            <span>Movimientos</span>
+        </a>
+        <a id="menuVencimientos">
+            <i class="fas fa-calendar-xmark"></i>
+            <span>Vencimientos</span>
+        </a>
+    </div>
+</div>
 <a id="menuConfiguracion">
     <i class="fas fa-gear"></i>
     <span>Configuración</span>
@@ -265,14 +275,13 @@ Inventario
             <i class="fas fa-arrow-right-from-bracket"></i>
             Salida
         </button>
-        <button id="btnSugerenciaPedidoAlmacen" class="almacen-tab almacen-tab-sugerencia" type="button">
-            <i class="fas fa-clipboard-list"></i>
+
+        <button id="tabSugerenciaPedido" class="almacen-tab" type="button">
+            <i class="fas fa-cart-flatbed"></i>
             Sugerencia de pedido
         </button>
 
     </div>
-
-    <div id="panelSugerenciaAlmacen" style="display:none;margin-top:18px;"></div>
 
 
     <!-- ==========================
@@ -307,6 +316,7 @@ Inventario
             <label for="entradaNombre">Nombre del producto</label>
             <input type="text" id="entradaNombre" readonly placeholder="Se completa al seleccionar el SKU">
             <input type="hidden" id="entradaProducto">
+            <div id="entradaProductoPreview" class="almacen-product-preview" style="display:none" aria-live="polite"></div>
         </div>
 
         <div class="campo">
@@ -443,6 +453,23 @@ Inventario
 
     </div>
 
+    <!-- SUGERENCIA DE PEDIDO: pestaña propia dentro de Almacén -->
+    <div id="panelSugerenciaPedido" class="gestion-panel" style="display:none;" aria-label="Sugerencia de pedido">
+        <div class="gestion-barra">
+            <input id="filtroReposicion" type="search" placeholder="Filtrar por código, producto o marca..." aria-label="Filtrar sugerencias de pedido">
+            <div class="gestion-acciones">
+                <button id="btnExportarSugerenciaExcel" class="btn-exportar-excel" type="button" title="Descargar el reporte de pedidos en Excel" aria-label="Descargar reporte de pedidos en Excel"><i class="fas fa-file-excel" aria-hidden="true"></i> Descargar Excel</button>
+                <button id="btnActualizarReposicion" class="btn-actualizar" type="button"><i class="fas fa-rotate"></i> Actualizar</button>
+            </div>
+        </div>
+        <p class="gestion-nota">Los mínimos requeridos se utilizan únicamente para calcular pedidos; no forman parte de las existencias. La sugerencia de traslado nunca supera lo disponible en San Pedro Sula.</p>
+        <div id="resumenReposicion" class="gestion-resumen"></div>
+        <h3 class="gestion-titulo">Reactivos: pedido de Tegucigalpa a San Pedro Sula</h3>
+        <div class="tabla-scroll" id="tablaReposicionReactivos"></div>
+        <h3 class="gestion-titulo">Materiales: necesidad de pedido de Tegucigalpa</h3>
+        <div class="tabla-scroll" id="tablaReposicionMateriales"></div>
+    </div>
+
 </section>
 <!-- ==========================
      MOVIMIENTOS
@@ -554,7 +581,7 @@ id="fechaMovimientos">
 </div>
 </section>
 
-<!-- CONFIGURACIÓN -->
+
 <section id="seccionConfiguracion" class="settings-page" style="display:none;">
   <div class="settings-heading"><i class="fas fa-gear"></i><div><h2>Configuración</h2><p>Consulta tu información de usuario y personaliza tu experiencia en el sistema.</p></div></div>
   <div class="settings-grid">
@@ -865,6 +892,8 @@ Producto
 
 </h2>
 
+<div id="detalleImagenProducto" class="detalle-imagen-producto" style="display:none"></div>
+
 <div class="detalle-info">
 
 
@@ -1016,6 +1045,7 @@ LOTES
 <script src="js/vencimientos.js"></script>
 <script src="js/pdf-vencimientos.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/gestion.js"></script>
 
 </body>
 

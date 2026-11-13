@@ -4,7 +4,7 @@
    Optimizada para reducir consultas y mejorar velocidad
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxq4o90BbalxbxsOoZCVO3hQ8kSBsBpNu6CSpMKTuXvMsOU-SuyZ2a9z2CM7gx41bc/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxc_YbJ4etseA960gEFZPweo6ipVIjrYHOwRzCDKdl6ZkHOXXgt9HNvWdx56RNJVrrF/exec";
 
 /* ==========================================================
    CONFIGURACIÓN DE CACHÉ
@@ -411,4 +411,13 @@ async function registrarMovimiento(datos) {
  */
 async function registrarMovimientosLote(comunes, items) {
     return postAutenticado("registrarMovimientos", { ...comunes, items });
+}
+
+
+/* ==========================================================
+   LOGOTIPOS DE MARCAS (pestaña Marcas de Tegucigalpa)
+========================================================== */
+async function obtenerMarcas(forzar = false) {
+    const url = `${API_URL}?action=getMarcas`;
+    return await apiFetch(url, "marcas", 300000, forzar);
 }

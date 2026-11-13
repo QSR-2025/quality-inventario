@@ -678,13 +678,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const btnSalida =
         document.getElementById("tabSalida");
-
-    const btnSugerenciaPedido = document.getElementById("btnSugerenciaPedidoAlmacen");
-    if (btnSugerenciaPedido) btnSugerenciaPedido.addEventListener("click", () => {
-        document.getElementById("tabEntrada")?.classList.remove("active");
-        document.getElementById("tabSalida")?.classList.remove("active");
-        if (typeof mostrarSugerenciaPedido === "function") mostrarSugerenciaPedido();
-    });
+    const btnPedido = document.getElementById("tabSugerenciaPedido");
+    const panelPedido = document.getElementById("panelSugerenciaPedido");
 
     const formEntrada =
         document.getElementById("formEntrada");
@@ -709,42 +704,27 @@ document.addEventListener("DOMContentLoaded", async () => {
        CAMBIAR ENTRE ENTRADA Y SALIDA
     ========================================== */
 
-    if (btnEntrada && btnSalida) {
-
-        btnEntrada.addEventListener("click", () => {
-
-            if (typeof cerrarSugerenciaPedido === "function") cerrarSugerenciaPedido();
-            btnEntrada.classList.add("active");
-            btnSalida.classList.remove("active");
-
-            if (formEntrada) {
-                formEntrada.style.display = "grid";
-            }
-
-            if (formSalida) {
-                formSalida.style.display = "none";
-            }
-
-        });
-
-
-        btnSalida.addEventListener("click", () => {
-
-            if (typeof cerrarSugerenciaPedido === "function") cerrarSugerenciaPedido();
-            btnSalida.classList.add("active");
-            btnEntrada.classList.remove("active");
-
-            if (formEntrada) {
-                formEntrada.style.display = "none";
-            }
-
-            if (formSalida) {
-                formSalida.style.display = "grid";
-            }
-
-        });
-
+    const botonesAlmacen = [btnEntrada, btnSalida, btnPedido].filter(Boolean);
+    function activarPestanaAlmacen(vista) {
+        botonesAlmacen.forEach(b => b.classList.toggle("active", b.dataset.vistaAlmacen === vista));
+        if (formEntrada) formEntrada.style.display = vista === "entrada" ? "grid" : "none";
+        if (formSalida) formSalida.style.display = vista === "salida" ? "grid" : "none";
+        if (panelPedido) panelPedido.style.display = vista === "pedido" ? "block" : "none";
+        const panelActivo = vista === "entrada" ? formEntrada : (vista === "salida" ? formSalida : panelPedido);
+        if (panelActivo && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            panelActivo.classList.remove("qi-animate-enter");
+            void panelActivo.offsetWidth;
+            panelActivo.classList.add("qi-animate-enter");
+            panelActivo.addEventListener("animationend", () => panelActivo.classList.remove("qi-animate-enter"), { once: true });
+        }
+        if (vista === "pedido" && typeof window.cargarSugerenciaPedido === "function") {
+            window.cargarSugerenciaPedido(false);
+        }
     }
+    if (btnEntrada) { btnEntrada.dataset.vistaAlmacen = "entrada"; btnEntrada.addEventListener("click", () => activarPestanaAlmacen("entrada")); }
+    if (btnSalida) { btnSalida.dataset.vistaAlmacen = "salida"; btnSalida.addEventListener("click", () => activarPestanaAlmacen("salida")); }
+    if (btnPedido) { btnPedido.dataset.vistaAlmacen = "pedido"; btnPedido.addEventListener("click", () => activarPestanaAlmacen("pedido")); }
+    activarPestanaAlmacen("entrada");
 
 
     /* ==========================================
@@ -903,6 +883,48 @@ function buscarProductoAlmacen(texto, bodega, permitirSinLotes = false) {
 function resolverNombreProducto(producto) {
     return String(producto?.nombre || producto?.producto || producto?.descripcion || producto?.name || producto?.descripcionProducto || '').trim();
 }
+function obtenerImagenProductoAlmacen(producto) {
+    if (!producto) return { url: '', fuente: null };
+    if (producto.imagen || producto.imagenFuente) return { url: String(producto.imagen || ''), fuente: producto.imagenFuente || null };
+    const refs = [
+        [producto.foto1 || producto.ref1 || producto.referencia1, producto.foto1Tipo, producto.foto1Fuente],
+        [producto.foto2 || producto.ref2 || producto.referencia2, producto.foto2Tipo, producto.foto2Fuente]
+    ];
+    for (const [valor, tipo, fuente] of refs) {
+        const url = String(valor || '').trim();
+        if (!url && !fuente) continue;
+        if (String(tipo || '').toLowerCase() === 'imagen' || !!fuente ||
+            /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url) ||
+            /drive\.google\.com\/(?:file\/d|thumbnail|uc|open)/i.test(url) ||
+            /googleusercontent\.com/i.test(url)) return { url, fuente: fuente || null };
+    }
+    return { url: '', fuente: null };
+}
+
+function mostrarPreviewProductoAlmacen(tipo, producto) {
+    if (tipo !== 'entrada') return;
+    const cont = document.getElementById('entradaProductoPreview');
+    if (!cont) return;
+    cont.replaceChildren();
+    const imagen = obtenerImagenProductoAlmacen(producto);
+    if (!producto || (!imagen.url && !imagen.fuente)) { cont.style.display = 'none'; return; }
+    const img = document.createElement('img');
+    img.alt = 'Imagen de ' + resolverNombreProducto(producto);
+    img.loading = 'eager'; img.decoding = 'async';
+    if (typeof cargarImagenConRespaldoQI === 'function') {
+        cargarImagenConRespaldoQI(img, imagen.url, () => { cont.style.display = 'none'; cont.replaceChildren(); }, imagen.fuente);
+    } else {
+        img.src = imagen.url;
+        img.onerror = () => { cont.style.display = 'none'; cont.replaceChildren(); };
+    }
+    const datos = document.createElement('div');
+    const nombre = document.createElement('strong'); nombre.textContent = resolverNombreProducto(producto);
+    const sku = document.createElement('span'); sku.textContent = 'SKU: ' + String(producto.sku || producto.codigo || '—');
+    datos.append(nombre, sku);
+    cont.append(img, datos);
+    cont.style.display = 'flex';
+}
+
 function actualizarProductoDesdeSku(tipo) {
     const prefijo = tipo === 'entrada' ? 'entrada' : 'salida';
     const bodega = document.getElementById(prefijo + 'Bodega')?.value || '';
@@ -910,8 +932,10 @@ function actualizarProductoDesdeSku(tipo) {
     const producto = buscarProductoAlmacen(sku, bodega, tipo === 'entrada');
     document.getElementById(prefijo + 'Producto').value = producto ? String(producto.sku || producto.codigo || producto.code || sku) : '';
     document.getElementById(prefijo + 'Nombre').value = producto ? resolverNombreProducto(producto) : '';
+    if (tipo === 'entrada') mostrarPreviewProductoAlmacen(tipo, producto);
     cargarLotesDesdeInput(prefijo + 'Producto', prefijo + 'Bodega', prefijo + 'Lote');
 }
+
 function alternarCamposLoteNuevo(mostrar) {
     const campos = document.getElementById('camposLoteNuevo');
     const fecha = document.getElementById('entradaVencimiento');
@@ -1003,7 +1027,7 @@ document.addEventListener('click', async event => {
         arr.push({tipo,bodega:normalizarBodega(bodega),producto:sku,nombre,lote,cantidad,vencimiento,loteNuevo});
         pintarLista(tipo);
         document.getElementById(pref+'Sku').value=''; document.getElementById(pref+'Producto').value=''; document.getElementById(pref+'Nombre').value=''; document.getElementById(pref+'Cantidad').value='';
-        if (tipo === 'entrada') { alternarCamposLoteNuevo(false); document.getElementById('entradaLote').value=''; }
+        if (tipo === 'entrada') { alternarCamposLoteNuevo(false); document.getElementById('entradaLote').value=''; const pv=document.getElementById('entradaProductoPreview'); if(pv){pv.replaceChildren();pv.style.display='none';} }
         return;
     }
     const boton = event.target.closest('#btnRegistrarEntrada, #btnRegistrarSalida');
