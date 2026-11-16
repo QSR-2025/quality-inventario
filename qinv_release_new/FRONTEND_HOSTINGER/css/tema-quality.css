@@ -400,6 +400,7 @@ button:active { transform:translateY(1px); }
     transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;
   }
 }
+<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/css/tema-quality.css
 
 /* ==========================================================================
    FASE 2.6 — RENDIMIENTO
@@ -620,3 +621,5 @@ body.qi-dark #subReportes,body.qi-dark #subReportes:not([hidden]) { background:#
 @media(max-width:640px) {
   .cards .card { border-radius:15px; }
 }
+=======
+>>>>>>> origin/main:css/tema-quality.css
