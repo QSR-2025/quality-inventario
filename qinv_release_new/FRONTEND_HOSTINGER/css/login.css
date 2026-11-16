@@ -54,10 +54,7 @@ body{
     align-items:center;
     justify-content:center;
     padding:64px;
-    background:
-        radial-gradient(900px 500px at 15% -10%, rgba(255,255,255,.16), transparent 60%),
-        radial-gradient(700px 500px at 110% 110%, rgba(11,99,246,.55), transparent 60%),
-        linear-gradient(145deg,var(--azul-900) 0%, var(--azul-800) 38%, var(--azul-600) 100%);
+    background:linear-gradient(132deg,#08275f 0%,#0b4fc4 66%,#087f9b 100%);
 }
 
 /* Trama sutil de puntos */
@@ -65,10 +62,7 @@ body{
     content:"";
     position:absolute;
     inset:0;
-    background-image:radial-gradient(rgba(255,255,255,.10) 1px, transparent 1px);
-    background-size:26px 26px;
-    -webkit-mask-image:linear-gradient(135deg,#000 0%, transparent 70%);
-            mask-image:linear-gradient(135deg,#000 0%, transparent 70%);
+    background:linear-gradient(135deg,transparent 55%,rgba(255,255,255,.07));
     pointer-events:none;
 }
 
@@ -480,3 +474,18 @@ footer span{
     }
 
 }
+
+/* Armonización con la interfaz principal de Quality Inventario */
+.welcome-panel{
+    background:linear-gradient(135deg,#17243c 0%,#244b9b 58%,#176f91 100%);
+}
+.login-panel{
+    background:radial-gradient(600px 400px at 100% 0%,#e3ebfb,transparent 65%),#f1f5fc;
+}
+.login-card{
+    border-color:#dce5f3;
+    box-shadow:0 18px 48px rgba(23,36,60,.12);
+}
+.input-group input{background:#eaf0fb}
+.btn-login{background:linear-gradient(180deg,#4169e8,#2458c7);box-shadow:0 10px 22px rgba(36,88,199,.25)}
+.btn-login:hover{box-shadow:0 14px 28px rgba(36,88,199,.32)}

@@ -27,12 +27,25 @@ let rutaActual = {
 
 let indiceMarcas = new Map();
 let indiceCategorias = new Map();
+let indiceLogosMarcas = new Map();
+let firmaInventarioQI = "";          // huella de la última respuesta aplicada (evita redibujar si no cambió)
+let ultimoAvisoImagenQI = 0;
 // ==========================================================
 // RENDERIZADO PROGRESIVO DE PRODUCTOS
 // Evita crear cientos de tarjetas al mismo tiempo
 // ==========================================================
 
 let renderVersion = 0;
+let observadorMasProductos = null;
+let cantidadRenderizadaQI = 0;      // tarjetas pintadas en la lista actual
+let minimoPrimerLoteQI = 0;         // para no "saltar" al inicio cuando se redibuja con datos nuevos
+
+const PRIMER_LOTE_QI = 16;          // primera pantalla: aparece de inmediato
+const LOTE_SIGUIENTE_QI = 24;       // lo demás se pinta al acercarse al final de la lista
+
+function optimizacionActivaQI() {
+    try { return localStorage.getItem("qiOptimizacion") !== "off"; } catch (e) { return true; }
+}
 
 function renderProductosProgresivo(productos, contenedor, lote = 30) {
 
@@ -40,50 +53,150 @@ function renderProductosProgresivo(productos, contenedor, lote = 30) {
 
     const versionActual = renderVersion;
 
+    if (observadorMasProductos) {
+        observadorMasProductos.disconnect();
+        observadorMasProductos = null;
+    }
+
+    if (window.QI_IMG) QI_IMG.liberar(contenedor);
+
     contenedor.innerHTML = "";
+    cantidadRenderizadaQI = 0;
+
+    // Ruta anterior (solo con localStorage.qiOptimizacion = "off", para comparar).
+    if (!optimizacionActivaQI()) {
+        renderProductosProgresivoAnterior(productos, contenedor, lote, versionActual);
+        return;
+    }
+
+    if (!productos.length) return;
+
+    // Carga progresiva: se pinta la primera pantalla y el resto por tandas
+    // cuando el usuario se acerca al final. Así hay pocas tarjetas en el DOM
+    // y no se piden fotografías que nadie ha visto.
+    const primer = Math.max(PRIMER_LOTE_QI, minimoPrimerLoteQI || 0);
+    minimoPrimerLoteQI = 0;
+
+    let posicion = 0;
+    const sentinela = document.createElement("div");
+    sentinela.className = "qi-sentinela";
+    sentinela.setAttribute("aria-hidden", "true");
+
+    function pintar(cantidad) {
+
+        if (versionActual !== renderVersion) return;
+
+        const fragmento = document.createDocumentFragment();
+        const limite = Math.min(posicion + cantidad, productos.length);
+
+        for (; posicion < limite; posicion++) {
+            renderProductCard(productos[posicion], fragmento, posicion);
+        }
+
+        if (sentinela.parentNode) sentinela.remove();
+
+        contenedor.appendChild(fragmento);
+        cantidadRenderizadaQI = posicion;
+
+        if (posicion < productos.length) {
+            contenedor.appendChild(sentinela);
+            if (observadorMasProductos) {
+                observadorMasProductos.unobserve(sentinela);
+                observadorMasProductos.observe(sentinela);
+            }
+        } else if (observadorMasProductos) {
+            observadorMasProductos.disconnect();
+            observadorMasProductos = null;
+        }
+    }
+
+    if ("IntersectionObserver" in window) {
+        observadorMasProductos = new IntersectionObserver(entradas => {
+            if (entradas.some(e => e.isIntersecting)) pintar(LOTE_SIGUIENTE_QI);
+        }, { rootMargin: "700px 0px" });
+    }
+
+    pintar(primer);
+
+    // Sin IntersectionObserver (navegadores muy antiguos): pintar el resto por tandas en reposo.
+    if (!observadorMasProductos && posicion < productos.length) {
+        const resto = () => {
+            if (versionActual !== renderVersion || posicion >= productos.length) return;
+            pintar(LOTE_SIGUIENTE_QI);
+            requestAnimationFrame(resto);
+        };
+        requestAnimationFrame(resto);
+    }
+}
+
+// Comportamiento anterior: crea todas las tarjetas en tandas de 30 por cuadro.
+function renderProductosProgresivoAnterior(productos, contenedor, lote, versionActual) {
 
     let posicion = 0;
 
     function renderSiguienteLote() {
 
-        // Si el usuario cambió de categoría o búsqueda,
-        // cancelamos este render anterior.
         if (versionActual !== renderVersion) {
             return;
         }
 
         const fragment = document.createDocumentFragment();
 
-        const limite = Math.min(
-            posicion + lote,
-            productos.length
-        );
+        const limite = Math.min(posicion + lote, productos.length);
 
         for (; posicion < limite; posicion++) {
-
-            renderProductCard(
-                productos[posicion],
-                fragment
-            );
-
+            renderProductCard(productos[posicion], fragment, posicion);
         }
 
         contenedor.appendChild(fragment);
+        cantidadRenderizadaQI = posicion;
 
         if (posicion < productos.length) {
-
-            requestAnimationFrame(
-                renderSiguienteLote
-            );
-
+            requestAnimationFrame(renderSiguienteLote);
         }
-
     }
 
-    requestAnimationFrame(
-        renderSiguienteLote
-    );
+    requestAnimationFrame(renderSiguienteLote);
 }
+
+/** Tarjetas de carga mientras llegan los datos (sin animaciones pesadas). */
+function mostrarEsqueletoQI(contenedor, cantidad = 8) {
+    if (!contenedor) return;
+    contenedor.setAttribute("aria-busy", "true");
+    const fragmento = document.createDocumentFragment();
+    for (let i = 0; i < cantidad; i++) {
+        const d = document.createElement("div");
+        d.className = "product-card qi-esqueleto";
+        d.setAttribute("aria-hidden", "true");
+        d.innerHTML = '<div class="qi-esq-logo"></div><div class="qi-esq-lineas"><span></span><span></span></div>';
+        fragmento.appendChild(d);
+    }
+    contenedor.appendChild(fragmento);
+}
+
+function quitarEsqueletoQI(contenedor) {
+    if (!contenedor) return;
+    contenedor.removeAttribute("aria-busy");
+    contenedor.querySelectorAll(".qi-esqueleto").forEach(e => e.remove());
+}
+
+/** Mide (solo si QIPerf está activo) cuánto tardan en verse todas las imágenes de una lista. */
+function medirImagenesVisiblesQI(etiqueta, selector) {
+    if (!window.QIPerf) return;
+    QIPerf.inicio(etiqueta);
+    const t0 = Date.now();
+    const revisar = () => {
+        const pendientes = Array.from(document.querySelectorAll(selector)).filter(img =>
+            img.classList.contains("qi-img-pendiente") || (img.getAttribute("src") && !img.complete));
+        if (!pendientes.length || Date.now() - t0 > 20000) {
+            QIPerf.cerrar(etiqueta, { pendientes: pendientes.length });
+            return;
+        }
+        setTimeout(revisar, 100);
+    };
+    setTimeout(revisar, 100);
+}
+
 function construirIndicesInventario() {
 
     indiceMarcas.clear();
@@ -91,7 +204,7 @@ function construirIndicesInventario() {
 
     inventario.forEach(producto => {
 
-        const marca = producto.proveedor || "";
+        const marca = producto.marca || producto.proveedor || "";
         const categoria = producto.categoria || "";
 
         if (marca) {
@@ -182,14 +295,25 @@ async function cargarInicio() {
 
     console.time("⏱️ CARGA INICIAL");
 
+    const listaInicial = document.getElementById("productList");
+    mostrarEsqueletoQI(listaInicial, 8);
+
     try {
 
+        // Los logotipos ya NO bloquean la primera pantalla: se piden en paralelo
+        // y se colocan en las tarjetas cuando llegan (o al instante si hay caché).
+        cargarLogosMarcasQI(false);
+
         const datos = await obtenerInicio();
+
+        if (window.QIPerf) QIPerf.marca("apertura:datos-recibidos");
 
         inventario =
             Array.isArray(datos?.productos)
                 ? datos.productos
                 : [];
+
+        firmaInventarioQI = calcularFirmaInventarioQI(datos);
 
         construirIndicesInventario();
 
@@ -200,11 +324,17 @@ async function cargarInicio() {
 
         pintarResumenInicio(datos?.resumen);
 
+        quitarEsqueletoQI(listaInicial);
+
         mostrarMarcas();
+
+        if (window.QIPerf) QIPerf.marca("apertura:marcas-pintadas");
 
         marcarInventarioActualizado();
 
     } catch (error) {
+
+        quitarEsqueletoQI(listaInicial);
 
         console.error(
             "Error cargando inicio:",
@@ -402,6 +532,10 @@ console.timeEnd("⏱️ TEGUS + SPS");
             )
             .trim()
             .toUpperCase();
+            const tipoProducto = String(producto.tipo || "reactivo").toLowerCase();
+            // Reactivos y Materiales son catálogos distintos: no fusionar
+            // productos solo porque compartan el mismo código.
+            const claveProducto = `${tipoProducto}|${sku}`;
 
 
             // ==================================
@@ -421,16 +555,18 @@ console.timeEnd("⏱️ TEGUS + SPS");
             // PRODUCTO NUEVO
             // ==================================
 
-            if (!productosAgrupados.has(sku)) {
+            if (!productosAgrupados.has(claveProducto)) {
 
                 productosAgrupados.set(
-                    sku,
+                    claveProducto,
                     {
                         ...producto,
                         sku: sku,
                         stockTotal: 0,
                         stockTGU: 0,
-                        stockSPS: 0,
+                        // SPS Materiales no está integrado todavía: null
+                        // evita presentar un cero que no proviene de la hoja.
+                        stockSPS: tipoProducto === "material" ? null : 0,
                         lotes: []
                     }
                 );
@@ -439,7 +575,7 @@ console.timeEnd("⏱️ TEGUS + SPS");
 
 
             const productoFinal =
-                productosAgrupados.get(sku);
+                productosAgrupados.get(claveProducto);
 
 
             // ==================================
@@ -793,11 +929,66 @@ function actualizarDashboard(datos) {
 
 // Oculta todas las secciones principales antes de abrir la seleccionada.
 function ocultarSeccionesPrincipales() {
-    ["seccionResultados", "seccionAlmacen", "seccionMovimientos", "seccionVencimientos", "seccionConfiguracion"].forEach(id => {
+    ["seccionResultados", "seccionAlmacen", "seccionMovimientos", "seccionVencimientos", "seccionConfiguracion", "seccionDirectorioClientes"].forEach(id => {
         const elemento = document.getElementById(id);
         if (elemento) elemento.style.display = "none";
     });
 }
+
+
+// El menú de reportes se configura de forma independiente para que siga
+// funcionando incluso si otra carga inicial presenta un error.
+function configurarCentroReportesQI() {
+    const boton = document.getElementById("btnCentroReportes");
+    const grupo = document.getElementById("grupoReportes");
+    const submenu = document.getElementById("subReportes");
+    if (!boton || !grupo || !submenu || boton.dataset.qiReportBound === "1") return;
+    boton.dataset.qiReportBound = "1";
+
+    // Se mueve al body para escapar del overflow-y:auto del sidebar.
+    if (submenu.parentElement !== document.body) document.body.appendChild(submenu);
+    const posicionar = () => {
+        const r = boton.getBoundingClientRect();
+        const ancho = Math.min(230, window.innerWidth - 24);
+        let izquierda = r.right + 8;
+        if (izquierda + ancho > window.innerWidth - 12) izquierda = Math.max(12, r.left);
+        submenu.style.position = "fixed";
+        submenu.style.left = izquierda + "px";
+        submenu.style.top = Math.min(r.bottom + 6, window.innerHeight - submenu.offsetHeight - 12) + "px";
+        submenu.style.minWidth = ancho + "px";
+        submenu.style.zIndex = "100000";
+    };
+    const cerrar = () => {
+        grupo.classList.remove("open");
+        submenu.hidden = true;
+        boton.setAttribute("aria-expanded", "false");
+    };
+    const abrir = () => {
+        grupo.classList.add("open");
+        submenu.hidden = false;
+        boton.setAttribute("aria-expanded", "true");
+        posicionar();
+    };
+    cerrar();
+    boton.addEventListener("click", (evento) => {
+        evento.preventDefault(); evento.stopPropagation();
+        if (boton.getAttribute("aria-expanded") === "true") cerrar(); else abrir();
+    });
+    submenu.addEventListener("click", (evento) => {
+        const enlace = evento.target.closest("a");
+        if (enlace) cerrar();
+    });
+    document.addEventListener("click", (evento) => {
+        if (!grupo.contains(evento.target) && !submenu.contains(evento.target)) cerrar();
+    });
+    document.addEventListener("keydown", (evento) => {
+        if (evento.key === "Escape") { cerrar(); boton.focus(); }
+    });
+    window.addEventListener("resize", () => { if (!submenu.hidden) posicionar(); });
+    window.addEventListener("scroll", () => { if (!submenu.hidden) posicionar(); }, true);
+}
+
+document.addEventListener("DOMContentLoaded", configurarCentroReportesQI);
 
 // ========================================
 // MENU
@@ -882,73 +1073,152 @@ if (menuAlmacen) {
 }
 
 
+// Normalización para emparejar marcas del inventario con la pestaña Marcas de TGU.
+function normalizarMarcaQI(valor) {
+    return String(valor || "").trim().normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+// Las funciones extraerIdDriveQI, obtenerImagenDriveQI, esUrlProxyableQI y
+// cargarImagenConRespaldoQI ahora viven en js/imagenes.js (misma firma).
+
+/** Pide la lista de logotipos (con caché local) y los coloca en las tarjetas visibles. */
+async function cargarLogosMarcasQI(forzar = false) {
+    if (typeof obtenerMarcas !== "function") return;
+    try {
+        aplicarLogosMarcasQI(await obtenerMarcas(forzar));
+    } catch (error) {
+        console.warn("No se pudieron cargar los logotipos de marcas:", error);
+    }
+}
+
+function aplicarLogosMarcasQI(datosMarcas) {
+    indiceLogosMarcas.clear();
+    (Array.isArray(datosMarcas?.marcas) ? datosMarcas.marcas : []).forEach(item => {
+        const clave = normalizarMarcaQI(item?.nombre);
+        if (!clave) return;
+        // La referencia (nombre de la marca) permite al servidor comprobar que la fila sigue siendo esa marca.
+        const fuente = item.imagenFuente ? { hoja: item.imagenFuente.hoja, fila: item.imagenFuente.fila, columna: item.imagenFuente.columna, ref: String(item.nombre || "") } : null;
+        if (item.imagen || fuente) indiceLogosMarcas.set(clave, { url: String(item.imagen || ""), fuente });
+    });
+    // Tarjetas que ya estaban en pantalla sin logotipo (porque aún no llegaba la lista).
+    document.querySelectorAll(".brand-logo[data-marca]").forEach(caja => {
+        if (!caja.querySelector("img")) llenarLogoMarcaQI(caja, caja.dataset.marca, 99);
+    });
+}
+
+function crearLogoMarcaQI(marca, clase = "brand-logo", indice = 99) {
+    const caja = document.createElement("div");
+    caja.className = clase;
+    caja.dataset.marca = marca;
+    llenarLogoMarcaQI(caja, marca, indice);
+    return caja;
+}
+
+function llenarLogoMarcaQI(caja, marca, indice = 99) {
+    const iconoGenerico = () => {
+        const icono = document.createElement("i");
+        icono.className = "fas fa-tag";
+        icono.setAttribute("aria-hidden", "true");
+        return icono;
+    };
+    const logo = indiceLogosMarcas.get(normalizarMarcaQI(marca));
+    const url = logo && logo.url ? logo.url : "";
+    const fuente = logo && logo.fuente ? logo.fuente : null;
+    caja.replaceChildren();
+    if (url || fuente) {
+        const img = document.createElement("img");
+        img.alt = "Logotipo " + marca;
+        // Los primeros logotipos se piden con prioridad; el resto, al acercarse a la pantalla.
+        img.loading = indice < 8 ? "eager" : "lazy";
+        cargarImagenConRespaldoQI(img, url, () => {
+            img.remove();
+            caja.appendChild(iconoGenerico());
+        }, fuente, { tipo: "marcas", prioridad: indice < 8 ? "alta" : "normal" });
+        caja.appendChild(img);
+    } else {
+        caja.appendChild(iconoGenerico());
+    }
+}
+
+function tipoImagenProductoQI(producto) {
+    const tipo = String(producto && producto.tipo || "").toLowerCase();
+    if (tipo === "repuesto") return "repuestos";
+    if (tipo === "material") return "materiales";
+    return "reactivos";
+}
+
+function obtenerDatosImagenPrincipalQI(producto) {
+    if (!producto) return { url: "", fuente: null };
+    const fuente = producto.imagenFuente && window.QI_IMG ? QI_IMG.conReferencia(producto.imagenFuente, producto.sku || producto.codigo) : (producto.imagenFuente || null);
+    return { url: String(producto.imagen || "").trim(), fuente };
+}
+
+function obtenerImagenPrincipalQI(producto) {
+    return obtenerDatosImagenPrincipalQI(producto).url;
+}
+
+function abrirVisorReferenciaQI(src, titulo, fuenteCelda = null) {
+    let visor = document.getElementById("visorReferenciaQI");
+    if (!visor) {
+        visor = document.createElement("div");
+        visor.id = "visorReferenciaQI";
+        visor.className = "qi-image-viewer";
+        visor.innerHTML = '<button type="button" class="qi-image-viewer-close" aria-label="Cerrar imagen">×</button><img alt="Referencia ampliada"><p></p>';
+        document.body.appendChild(visor);
+        visor.querySelector("button").addEventListener("click", () => visor.classList.remove("open"));
+        visor.addEventListener("click", e => { if (e.target === visor) visor.classList.remove("open"); });
+        document.addEventListener("keydown", e => { if (e.key === "Escape") visor.classList.remove("open"); });
+    }
+    const img = visor.querySelector("img");
+    img.alt = titulo || "Referencia";
+    cargarImagenConRespaldoQI(img, src, () => { img.alt = "No se pudo cargar la imagen"; }, fuenteCelda, { prioridad: "alta" });
+    visor.querySelector("p").textContent = titulo || "Referencia";
+    visor.classList.add("open");
+}
+
 // ========================================
 // MOSTRAR MARCAS
 // ========================================
 function mostrarMarcas() {
-
     filtroEstadoActivo = "";
-
     rutaActual.marca = "";
     rutaActual.categoria = "";
-
     mostrarDashboardCards(true);
-
-    const contenedor =
-        document.getElementById("productList");
-
+    const contenedor = document.getElementById("productList");
     if (!contenedor) return;
-
+    if (window.QI_IMG) QI_IMG.liberar(contenedor);
+    renderVersion++;                      // cancela cualquier lista de productos en curso
+    if (observadorMasProductos) { observadorMasProductos.disconnect(); observadorMasProductos = null; }
     contenedor.innerHTML = "";
-
-    const marcas =
-        Array.from(indiceMarcas.keys())
-            .filter(Boolean)
-            .sort();
-
-    const fragment =
-        document.createDocumentFragment();
-
-    marcas.forEach(marca => {
-
-        const cantidad =
-            indiceMarcas.get(marca)?.length || 0;
-
-        const div =
-            document.createElement("div");
-
-        div.className = "product-card";
-
-        div.innerHTML = `
-            <div class="product-info">
-                <h3><i class="fas fa-folder"></i> ${marca}</h3>
-                <p>${cantidad} productos</p>
-            </div>
-
-            <button class="btn-detail">
-                Abrir
-            </button>
-        `;
-
-        div.onclick = () => {
-
-            rutaActual.marca = marca;
-            rutaActual.categoria = "";
-
-            mostrarCategorias(marca);
-
-        };
-
+    const marcas = Array.from(indiceMarcas.keys()).filter(Boolean).sort();
+    const fragment = document.createDocumentFragment();
+    marcas.forEach((marca, indiceMarca) => {
+        const cantidad = indiceMarcas.get(marca)?.length || 0;
+        const div = document.createElement("div");
+        div.className = "product-card catalog-card brand-card";
+        div.appendChild(crearLogoMarcaQI(marca, "brand-logo", indiceMarca));
+        const info = document.createElement("div");
+        info.className = "product-info";
+        const h3 = document.createElement("h3"); h3.textContent = marca;
+        const p = document.createElement("p"); p.textContent = cantidad + " productos";
+        info.append(h3, p);
+        div.appendChild(info);
+        const btn = document.createElement("button"); btn.className = "btn-detail"; btn.type = "button"; btn.textContent = "Abrir";
+        btn.addEventListener("click", e => { e.stopPropagation(); div.click(); });
+        div.appendChild(btn);
+        div.addEventListener("click", () => {
+            rutaActual.marca = marca; rutaActual.categoria = ""; mostrarCategorias(marca);
+        });
         fragment.appendChild(div);
-
     });
-
     contenedor.appendChild(fragment);
-
     actualizarBreadcrumb();
-
+    medirImagenesVisiblesQI("marcas:logos-visibles", "#productList .brand-logo img");
 }
 function mostrarCategorias(marca) {
+
+    if (window.QIPerf) QIPerf.inicio("categorias:render");
 
     filtroEstadoActivo = "";
 
@@ -961,6 +1231,10 @@ function mostrarCategorias(marca) {
         document.getElementById("productList");
 
     if (!contenedor) return;
+
+    if (window.QI_IMG) QI_IMG.liberar(contenedor);
+    renderVersion++;
+    if (observadorMasProductos) { observadorMasProductos.disconnect(); observadorMasProductos = null; }
 
     contenedor.innerHTML = "";
 
@@ -978,7 +1252,7 @@ function mostrarCategorias(marca) {
     const fragment =
         document.createDocumentFragment();
 
-    categorias.forEach(categoria => {
+    categorias.forEach((categoria, indiceCategoria) => {
 
         const cantidad =
             indiceCategorias
@@ -990,26 +1264,22 @@ function mostrarCategorias(marca) {
 
         div.className = "product-card";
 
-        div.innerHTML = `
-            <div class="product-info">
-                <h3><i class="fas fa-folder-open"></i> ${categoria}</h3>
-                <p>${cantidad} productos</p>
-            </div>
-
-            <button class="btn-detail">
-                Abrir
-            </button>
-        `;
+        div.className = "product-card catalog-card category-card";
+        div.appendChild(crearLogoMarcaQI(marca, "brand-logo category-logo", indiceCategoria));
+        const infoCategoria = document.createElement("div");
+        infoCategoria.className = "product-info";
+        const tituloCategoria = document.createElement("h3"); tituloCategoria.textContent = categoria;
+        const textoCategoria = document.createElement("p"); textoCategoria.textContent = cantidad + " productos";
+        infoCategoria.append(tituloCategoria, textoCategoria);
+        div.appendChild(infoCategoria);
+        const btnCategoria = document.createElement("button");
+        btnCategoria.className = "btn-detail"; btnCategoria.type = "button"; btnCategoria.textContent = "Abrir";
+        btnCategoria.addEventListener("click", e => { e.stopPropagation(); div.click(); });
+        div.appendChild(btnCategoria);
 
         div.onclick = () => {
-
             rutaActual.categoria = categoria;
-
-            mostrarProductos(
-                marca,
-                categoria
-            );
-
+            mostrarProductos(marca, categoria);
         };
 
         fragment.appendChild(div);
@@ -1020,6 +1290,9 @@ function mostrarCategorias(marca) {
 
     actualizarBreadcrumb();
 
+    if (window.QIPerf) QIPerf.cerrarTrasPintar("categorias:render");
+    medirImagenesVisiblesQI("categorias:logos-visibles", "#productList .brand-logo img");
+
 }
 // ========================================
 // MOSTRAR PRODUCTOS
@@ -1027,6 +1300,8 @@ function mostrarCategorias(marca) {
 
 
 function mostrarProductos(marca, categoria) {
+
+    if (window.QIPerf) QIPerf.inicio("productos:render");
 
     filtroEstadoActivo = "";
 
@@ -1064,6 +1339,9 @@ function mostrarProductos(marca, categoria) {
 );
 
 actualizarBreadcrumb();
+
+if (window.QIPerf) QIPerf.cerrarTrasPintar("productos:render");
+medirImagenesVisiblesQI("productos:imagenes-visibles", "#productList .product-thumb img");
 }
 
 
@@ -1100,38 +1378,55 @@ function crearCarpeta(titulo, texto, accion) {
 // ========================================
 
 
-function renderProductCard(producto, contenedor) {
-
-    const div = document.createElement("div");
-
-    div.className = "product-card";
-
-    div.innerHTML = `
-        <div class="product-info">
-            <h3>${producto.nombre || "Sin nombre"}</h3>
-            <p>SKU: ${producto.sku || "—"}</p>
-            <p>Proveedor: ${producto.proveedor || "—"}</p>
-            <p>Categoría: ${producto.categoria || "—"}</p>
-            <p>Stock: ${producto.stockTotal || 0}</p>
-        </div>
-        <button class="btn-detail">
-            <i class="fas fa-eye"></i>
-            Ver detalles
-        </button>
-    `;
-
-    div.querySelector(".btn-detail").onclick = (e) => {
-
-        e.stopPropagation();
-
-        verDetalleProducto(producto);
-
-    };
-
+function renderProductCard(producto, contenedor, indice = 99) {
+    const div = document.createElement("article");
+    div.className = "product-card product-card-product";
+    const datosImagen = obtenerDatosImagenPrincipalQI(producto);
+    const urlImagen = datosImagen.url;
+    const marco = document.createElement("div");
+    marco.className = "product-thumb";
+    if (urlImagen || datosImagen.fuente) {
+        const img = document.createElement("img");
+        img.alt = producto.nombre || "Imagen del producto";
+        // Las primeras tarjetas (primera pantalla) se piden con prioridad; el resto, al acercarse.
+        img.loading = indice < 6 ? "eager" : "lazy";
+        img.decoding = "async";
+        cargarImagenConRespaldoQI(img, urlImagen, () => {
+            marco.classList.add("sin-imagen");
+            marco.replaceChildren();
+            const icono = document.createElement("i"); icono.className = "fas fa-box-open";
+            marco.appendChild(icono);
+        }, datosImagen.fuente, { tipo: tipoImagenProductoQI(producto), prioridad: indice < 6 ? "alta" : "normal" });
+        marco.appendChild(img);
+    } else {
+        marco.classList.add("sin-imagen");
+        const icono = document.createElement("i"); icono.className = "fas fa-box-open";
+        marco.appendChild(icono);
+    }
+    const info = document.createElement("div");
+    info.className = "product-info";
+    const h3 = document.createElement("h3"); h3.textContent = producto.nombre || "Sin nombre";
+    const detalles = [
+        ["SKU", producto.sku || "—"],
+        ["Marca", producto.marca || producto.proveedor || "—"],
+        ["Categoría", producto.categoria || "—"],
+        ["Existencias", producto.stockTotal ?? 0]
+    ];
+    info.appendChild(h3);
+    detalles.forEach(([label, value]) => {
+        const p = document.createElement("p");
+        const strong = document.createElement("strong"); strong.textContent = label + ": ";
+        p.append(strong, document.createTextNode(String(value)));
+        info.appendChild(p);
+    });
+    const btn = document.createElement("button");
+    btn.className = "btn-detail"; btn.type = "button";
+    btn.innerHTML = '<i class="fas fa-eye" aria-hidden="true"></i> Ver detalles';
+    btn.addEventListener("click", e => { e.stopPropagation(); verDetalleProducto(producto); });
+    div.append(marco, info, btn);
+    div.addEventListener("click", () => verDetalleProducto(producto));
     contenedor.appendChild(div);
-
 }
-
 
 // ========================================
 // BREADCRUMB
@@ -1223,6 +1518,12 @@ function mostrarDashboardCards(mostrar) {
     const movimientos = document.getElementById("seccionMovimientos");
     const vencimientos = document.getElementById("seccionVencimientos");
     const almacen = document.getElementById("seccionAlmacen");
+
+    // Directorio de Clientes activo (clase puesta por js/directorio.js): nunca mostrar las tarjetas.
+    if (document.body.classList.contains("qi-vista-directorio")) {
+        dashboard.style.display = "none";
+        return;
+    }
 
     // Las tarjetas de Productos nunca se muestran en Almacén, Movimientos ni
     // Vencimientos (mostrarMarcas() y la recarga tras registrar las reactivaban).
@@ -1324,29 +1625,20 @@ function mostrarResultadosBusqueda(lista) {
 
     if (!contenedor) return;
 
-    contenedor.innerHTML = "";
-
     if (!lista.length) {
 
+        renderVersion++;
+        if (observadorMasProductos) { observadorMasProductos.disconnect(); observadorMasProductos = null; }
+        if (window.QI_IMG) QI_IMG.liberar(contenedor);
         contenedor.innerHTML =
             "<p class='sin-resultados'>No se encontraron productos.</p>";
 
         return;
     }
 
-    const fragment =
-        document.createDocumentFragment();
-
-    lista.forEach(producto => {
-
-        renderProductCard(
-            producto,
-            fragment
-        );
-
-    });
-
-    contenedor.appendChild(fragment);
+    // Antes se creaban TODAS las tarjetas de golpe (y sus imágenes). Ahora se
+    // pintan por tandas igual que en las categorías.
+    renderProductosProgresivo(lista, contenedor, 30);
 
 }
 
@@ -1538,55 +1830,69 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btn) btn.addEventListener("click", copiarDetalleProducto);
 });
 
-/** true si el texto es una URL que corresponde a una imagen. */
+/** Detecta URL de imagen, incluidos enlaces de Drive sin extensión visible. */
 function esUrlDeImagen(texto) {
-    if (/^data:image\//i.test(texto)) return true;
-    if (!/^https?:\/\//i.test(texto)) return false;
-    return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(texto)
-        || /^https?:\/\/drive\.google\.com\/(thumbnail|uc)\b/i.test(texto)
-        || /^https?:\/\/[a-z0-9-]+\.googleusercontent\.com\//i.test(texto);
+    if (/^data:image\//i.test(String(texto || ""))) return true;
+    const t = String(texto || "").trim();
+    if (!/^https?:\/\//i.test(t)) return false;
+    return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(t)
+        || /drive\.google\.com\/(thumbnail|uc|file)\b/i.test(t)
+        || /googleusercontent\.com\//i.test(t)
+        || /[?&]id=[A-Za-z0-9_-]{10,}/i.test(t);
 }
 
-/**
- * Crea el bloque de UNA referencia (texto, enlace o imagen). Devuelve null si
- * la referencia está vacía, sin afectar a la otra referencia.
- */
-function crearBloqueReferencia(titulo, valor) {
-    if (valor === null || valor === undefined) return null;
-    const texto = String(valor).trim();
-    if (!texto) return null;
-
+function crearBloqueReferencia(titulo, valor, tipo, fuenteCelda = null) {
+    const clase = String(tipo || (typeof valor === "object" ? valor.tipo : "") || "").toLowerCase();
+    const tieneFuenteImagen = !!fuenteCelda && clase === "imagen";
+    if ((valor === null || valor === undefined || valor === "") && !tieneFuenteImagen) return null;
+    const contenido = (typeof valor === "object" && valor.url) ? String(valor.url) : String(valor || "").trim();
+    if (!contenido && !tieneFuenteImagen) return null;
     const bloque = document.createElement("div");
     bloque.className = "referencia-material";
     const etiqueta = document.createElement("strong");
     etiqueta.textContent = titulo;
     bloque.appendChild(etiqueta);
 
-    const enlace = () => {
-        const a = document.createElement("a");
-        a.href = texto; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Ver referencia";
-        return a;
-    };
-
-    if (esUrlDeImagen(texto)) {
+    const esImagen = clase === "imagen" || tieneFuenteImagen || esUrlDeImagen(contenido) ||
+        /drive\.google\.com\/(?:file\/d|thumbnail|uc)/i.test(contenido) || /googleusercontent\.com/i.test(contenido);
+    const esEnlace = !esImagen && (clase === "enlace" || /^https?:\/\//i.test(contenido));
+    if (esImagen) {
+        const boton = document.createElement("button");
+        boton.type = "button"; boton.className = "referencia-imagen-btn";
+        boton.setAttribute("aria-label", "Ampliar " + titulo);
         const img = document.createElement("img");
-        img.src = texto; img.alt = titulo; img.loading = "lazy";
-        img.style.maxWidth = "140px"; img.style.maxHeight = "120px";
-        img.style.display = "block"; img.style.objectFit = "contain";
-        // Si la imagen no carga (permisos, enlace roto), ofrecer el enlace.
-        img.onerror = () => { if (/^https?:/i.test(texto)) img.replaceWith(enlace()); else img.remove(); };
-        bloque.appendChild(img);
-    } else if (/^https?:\/\//i.test(texto)) {
-        bloque.appendChild(enlace());
+        img.src = ""; img.alt = titulo; img.loading = "lazy"; img.decoding = "async";
+        if (/^https?:\/\//i.test(contenido) && !fuenteCelda) {
+            img.src = contenido;
+            img.onerror = () => { boton.classList.add("referencia-sin-imagen"); img.remove(); const aviso=document.createElement("span"); aviso.textContent="No se pudo cargar la imagen"; boton.appendChild(aviso); };
+        } else cargarImagenConRespaldoQI(img, contenido, () => {
+            if (/^https?:\/\//i.test(contenido) && clase !== "imagen") {
+                const a = document.createElement("a");
+                a.href = contenido; a.target = "_blank"; a.rel = "noopener noreferrer";
+                a.textContent = "Abrir referencia";
+                bloque.replaceChildren(etiqueta, a);
+            } else {
+                boton.classList.add("referencia-sin-imagen");
+                img.remove();
+                const aviso = document.createElement("span"); aviso.textContent = "No se pudo cargar la imagen";
+                boton.appendChild(aviso);
+            }
+        }, fuenteCelda, { prioridad: "alta" });
+        boton.appendChild(img);
+        boton.addEventListener("click", () => abrirVisorReferenciaQI(img.src || contenido, titulo, fuenteCelda));
+        bloque.appendChild(boton);
+    } else if (esEnlace) {
+        const a = document.createElement("a"); a.href = contenido; a.target = "_blank"; a.rel = "noopener noreferrer";
+        a.textContent = "Abrir referencia"; bloque.appendChild(a);
     } else {
-        const div = document.createElement("div");
-        div.textContent = texto;
+        const div = document.createElement("div"); div.className = "referencia-texto"; div.textContent = contenido;
         bloque.appendChild(div);
     }
     return bloque;
 }
 
 function verDetalleProducto(producto) {
+    if (window.QIPerf) QIPerf.inicio("ficha:apertura");
     productoDetalleActual = producto;
 
 
@@ -1612,6 +1918,38 @@ function verDetalleProducto(producto) {
         producto.stockTotal ?? 0;
 
     const esMaterial = esProductoSinLotes(producto);
+
+    // Mostrar la imagen principal también en la ficha, antes de los datos.
+    let cajaImagenProducto = document.getElementById("detalleImagenProducto");
+    if (!cajaImagenProducto) {
+        cajaImagenProducto = document.createElement("div");
+        cajaImagenProducto.id = "detalleImagenProducto";
+        cajaImagenProducto.className = "detalle-imagen-producto";
+        const titulo = document.getElementById("detalleNombre");
+        if (titulo) titulo.insertAdjacentElement("afterend", cajaImagenProducto);
+    }
+    cajaImagenProducto.replaceChildren();
+    const datosImagenDetalle = obtenerDatosImagenPrincipalQI(producto);
+    const imagenDetalle = datosImagenDetalle.url;
+    if (imagenDetalle || datosImagenDetalle.fuente) {
+        const imgDetalle = document.createElement("img");
+        imgDetalle.alt = "Imagen de " + (producto.nombre || "producto");
+        imgDetalle.loading = "eager";
+        imgDetalle.decoding = "async";
+        if (window.QIPerf) {
+            QIPerf.inicio("ficha:imagen");
+            imgDetalle.addEventListener("load", () => QIPerf.cerrar("ficha:imagen"), { once: true });
+        }
+        cargarImagenConRespaldoQI(imgDetalle, imagenDetalle, () => {
+            cajaImagenProducto.style.display = "none";
+            cajaImagenProducto.replaceChildren();
+        }, datosImagenDetalle.fuente, { prioridad: "alta", tipo: tipoImagenProductoQI(producto) });
+        cajaImagenProducto.appendChild(imgDetalle);
+        cajaImagenProducto.style.display = "flex";
+        imgDetalle.addEventListener("click", () => abrirVisorReferenciaQI(imgDetalle.src || imagenDetalle, producto.nombre || "Producto", datosImagenDetalle.fuente));
+    } else {
+        cajaImagenProducto.style.display = "none";
+    }
 
     // Los bloques existen en home.html; si el navegador conserva un home.html
     // antiguo en caché, se crean aquí en el mismo orden (stock > bodegas >
@@ -1648,9 +1986,13 @@ function verDetalleProducto(producto) {
     // ---- Existencias por bodega (solo Materiales/Repuestos) ----
     if (esMaterial) {
         const stock = obtenerStockPorBodega(producto);
-        stockBodegas.innerHTML =
-            `<div><strong>Tegucigalpa:</strong> ${textoCantidad(stock.tgu)}</div>` +
-            `<div><strong>San Pedro Sula:</strong> ${textoCantidad(stock.sps)}</div>`;
+        const filasStock = [`<div><strong>Tegucigalpa:</strong> ${textoCantidad(stock.tgu)}</div>`];
+        // Materiales solo tiene fuente integrada de TGU en esta fase. No mostrar
+        // una fila SPS vacía ni sugerir que ese inventario fue consultado.
+        if (stock.sps !== null && stock.sps !== undefined) {
+            filasStock.push(`<div><strong>San Pedro Sula:</strong> ${textoCantidad(stock.sps)}</div>`);
+        }
+        stockBodegas.innerHTML = filasStock.join("");
         stockBodegas.style.display = "grid";
     } else {
         stockBodegas.innerHTML = "";
@@ -1666,9 +2008,10 @@ function verDetalleProducto(producto) {
     referencias.innerHTML = "";
     let hayReferencias = false;
     if (esMaterial) {
-        [["Referencia 1", producto.foto1 ?? producto.ref1 ?? producto.referencia1],
-         ["Referencia 2", producto.foto2 ?? producto.ref2 ?? producto.referencia2]].forEach(([titulo, valor]) => {
-            const bloque = crearBloqueReferencia(titulo, valor);
+        // Referencia 1 ya se utiliza como imagen principal del material.
+        // En el bloque inferior solo se muestra Referencia 2 para evitar duplicarla.
+        [["Referencia 2", producto.foto2 ?? producto.ref2 ?? producto.referencia2, producto.foto2Tipo, producto.foto2Fuente]].forEach(([titulo, valor, tipo, fuente]) => {
+            const bloque = crearBloqueReferencia(titulo, valor, tipo, (fuente && window.QI_IMG) ? QI_IMG.conReferencia(fuente, producto.sku || producto.codigo) : fuente);
             if (bloque) { referencias.appendChild(bloque); hayReferencias = true; }
         });
     }
@@ -1783,6 +2126,7 @@ function verDetalleProducto(producto) {
 
     document.getElementById("modalProducto").style.display = "flex";
 
+    if (window.QIPerf) QIPerf.cerrarTrasPintar("ficha:apertura");
 
 }
 
@@ -1850,6 +2194,9 @@ function filtrarLotesPorEstado(estado){
     const contenedor = document.getElementById("productList");
 
 
+    if (window.QI_IMG) QI_IMG.liberar(contenedor);
+    renderVersion++;
+    if (observadorMasProductos) { observadorMasProductos.disconnect(); observadorMasProductos = null; }
     contenedor.innerHTML = "";
     // Migas de pan con acciones reales: "Inicio" vuelve a la lista de marcas
     // y el filtro actual se puede volver a abrir.
@@ -1921,16 +2268,7 @@ function filtrarLotesPorEstado(estado){
 
 
 
-    productosFiltrados.forEach(producto => {
-
-
-        renderProductCard(
-            producto,
-            contenedor
-        );
-
-
-    });
+    renderProductosProgresivo(productosFiltrados, contenedor, 30);
 
 
 
@@ -2392,6 +2730,18 @@ function refrescarVistaActual() {
     }
 }
 
+/**
+ * Huella de lo que se muestra (productos, existencias, lotes, imágenes) más la
+ * fecha, porque el estado de los lotes (Vigente / Por vencer...) se calcula con
+ * el día. Si la huella no cambia, se evita reconstruir índices y redibujar.
+ */
+function calcularFirmaInventarioQI(datos) {
+    const texto = JSON.stringify(datos && datos.productos || []) + "|" + JSON.stringify(datos && datos.resumen || {}) + "|" + new Date().toDateString();
+    let h = 5381;
+    for (let i = 0; i < texto.length; i++) h = (((h << 5) + h) + texto.charCodeAt(i)) | 0;
+    return texto.length + ":" + h;
+}
+
 /** Valida la respuesta del servidor y la aplica a la pantalla. */
 function aplicarDatosInicio(datos) {
 
@@ -2404,11 +2754,26 @@ function aplicarDatosInicio(datos) {
         throw new Error("El servidor devolvió el inventario vacío");
     }
 
+    if (optimizacionActivaQI()) {
+        const firma = calcularFirmaInventarioQI(datos);
+        if (firma === firmaInventarioQI && inventario.length) {
+            // Mismos datos que ya se muestran: no hay nada que redibujar.
+            marcarInventarioActualizado();
+            return;
+        }
+        firmaInventarioQI = firma;
+    }
+
     inventario = datos.productos;
 
     construirIndicesInventario();
     pintarResumenInicio(datos.resumen);
+
+    // Si el usuario estaba más abajo en una lista larga, redibujarla con al menos
+    // las mismas tarjetas para que la pantalla no "salte" al inicio.
+    minimoPrimerLoteQI = cantidadRenderizadaQI;
     refrescarVistaActual();
+    minimoPrimerLoteQI = 0;
 
     if (typeof cargarProductosAlmacen === "function") {
         cargarProductosAlmacen();
@@ -2512,9 +2877,38 @@ function revisarAutoActualizacion() {
 
 document.addEventListener("click", evento => {
     if (evento.target.closest && evento.target.closest("#btnActualizarInventario")) {
+        // Mayús + clic: además de las existencias, vuelve a descargar las imágenes
+        // (útil si se reemplazó una foto en Google Sheets y no se quiere esperar a que caduque la caché).
+        if (evento.shiftKey && window.QI_IMG) {
+            QI_IMG.invalidar();
+            cargarLogosMarcasQI(true);
+            refrescarVistaActual();
+        }
         actualizarInventario({ forzar: true });
     }
 });
+
+// Una imagen pidió una fila que ya no corresponde (se insertaron/movieron filas en Sheets):
+// se refrescan los datos una vez cada 2 minutos como máximo.
+document.addEventListener("qi-imagen-desactualizada", evento => {
+    if (Date.now() - ultimoAvisoImagenQI < 120000) return;
+    ultimoAvisoImagenQI = Date.now();
+    if (evento.detail && evento.detail.hoja === "Marcas") {
+        cargarLogosMarcasQI(true);
+    } else {
+        actualizarInventario({ forzar: true, silencioso: true });
+    }
+});
+
+// Medición del tiempo de cambio de módulo (clic → pantalla pintada). Solo registra marcas.
+document.addEventListener("click", evento => {
+    if (!window.QIPerf || !evento.target.closest) return;
+    const boton = evento.target.closest("#menuProductos, #menuAlmacen, #menuMovimientos, #menuVencimientos");
+    if (!boton) return;
+    const nombre = "modulo:" + boton.id.replace("menu", "").toLowerCase();
+    QIPerf.inicio(nombre);
+    QIPerf.cerrarTrasPintar(nombre);
+}, true);
 
 setInterval(revisarAutoActualizacion, REVISION_AUTO_MS);
 document.addEventListener("visibilitychange", revisarAutoActualizacion);

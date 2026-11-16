@@ -4,7 +4,7 @@
    Optimizada para reducir consultas y mejorar velocidad
 ========================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwRGgoUUFPggM7gPWPDKF53rUw08VZWEDa3CyUi53N8PyiEAmEABov2QBr_qSjghToN/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxKXqZPfE4t7Rb9wOTpgxI2odty-RkCtcQlQyT98dbqzgKqq10nxzx0zh-WLX7JyOdP/exec";
 
 /* ==========================================================
    CONFIGURACIÓN DE CACHÉ
@@ -366,23 +366,38 @@ async function postAutenticado(accion, datos) {
         };
     }
 
-    const respuesta = await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({
-            action: accion,
-            ...datos,
-            // El token de la sesión autenticada siempre prevalece sobre
-            // cualquier propiedad accidental dentro del objeto del movimiento.
-            // El rol NO se envía: el servidor lo consulta en la hoja Usuarios.
-            token: token
-        })
-    });
+    let respuesta;
+
+    try {
+        respuesta = await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+                action: accion,
+                ...datos,
+                // El token de la sesión autenticada siempre prevalece sobre
+                // cualquier propiedad accidental dentro del objeto del movimiento.
+                // El rol NO se envía: el servidor lo consulta en la hoja Usuarios.
+                token: token
+            })
+        });
+    } catch (errRed) {
+        throw new Error("No se pudo conectar con Apps Script (sin red, URL incorrecta o implementación bloqueada): " + (errRed && errRed.message ? errRed.message : errRed));
+    }
 
     if (!respuesta.ok) {
         throw new Error(`HTTP ${respuesta.status}`);
     }
 
-    const resultado = await respuesta.json();
+    // Se lee como texto para poder explicar el error si el servidor NO devolvió JSON
+    // (p. ej. una página de login de Google cuando la implementación no es pública).
+    const textoRespuesta = await respuesta.text();
+    let resultado;
+
+    try {
+        resultado = JSON.parse(textoRespuesta);
+    } catch (errJson) {
+        throw new Error("Apps Script no devolvió JSON válido. Verifique que la implementación esté publicada con acceso «Cualquier persona» y que la URL de api.js sea la de la implementación activa. Respuesta recibida: " + String(textoRespuesta).replace(/\s+/g, " ").slice(0, 160));
+    }
 
     // El servidor indicó que la sesión ya no existe (venció o se reinició la
     // caché): descartar el token local para no reutilizarlo.
@@ -411,4 +426,59 @@ async function registrarMovimiento(datos) {
  */
 async function registrarMovimientosLote(comunes, items) {
     return postAutenticado("registrarMovimientos", { ...comunes, items });
+}
+
+
+/* ==========================================================
+   LOGOTIPOS DE MARCAS (pestaña Marcas de Tegucigalpa)
+========================================================== */
+/*
+   Lista de marcas y logotipos: dato que casi no cambia. Se guarda en
+   localStorage (sin existencias ni URLs temporales: solo nombre, URL pública
+   o coordenada de la celda). Estrategia "stale-while-revalidate":
+     - < 10 min: se usa directo.
+     - 10 min a 24 h: se usa de inmediato y se actualiza en segundo plano.
+     - > 24 h o forzar: se pide al servidor.
+   Con localStorage.qiOptimizacion = "off" se usa el comportamiento anterior.
+*/
+const MARCAS_CLAVE_LOCAL = "qi:cache:marcas:v1";
+const MARCAS_FRESCO_MS = 10 * 60 * 1000;
+const MARCAS_MAXIMO_MS = 24 * 60 * 60 * 1000;
+
+function leerMarcasLocalQI() {
+    try {
+        const c = JSON.parse(localStorage.getItem(MARCAS_CLAVE_LOCAL) || "null");
+        return (c && c.ts && c.data && Array.isArray(c.data.marcas)) ? c : null;
+    } catch (e) { return null; }
+}
+
+async function pedirMarcasServidorQI(forzar) {
+    const url = `${API_URL}?action=getMarcas&forzar=${forzar ? 1 : 0}`;
+    const datos = await apiFetch(url, "marcas", 300000, forzar);
+    if (datos && Array.isArray(datos.marcas)) {
+        try { localStorage.setItem(MARCAS_CLAVE_LOCAL, JSON.stringify({ ts: Date.now(), data: datos })); } catch (e) {}
+    }
+    return datos;
+}
+
+async function obtenerMarcas(forzar = false) {
+
+    if (localStorage.getItem("qiOptimizacion") === "off") {
+        return await apiFetch(`${API_URL}?action=getMarcas`, "marcas", 300000, forzar);
+    }
+
+    if (!forzar) {
+        const local = leerMarcasLocalQI();
+        if (local) {
+            const edad = Date.now() - local.ts;
+            if (edad < MARCAS_FRESCO_MS) return local.data;
+            if (edad < MARCAS_MAXIMO_MS) {
+                // Se muestra lo guardado y se renueva sin que el usuario espere.
+                pedirMarcasServidorQI(false).catch(() => {});
+                return local.data;
+            }
+        }
+    }
+
+    return await pedirMarcasServidorQI(forzar);
 }

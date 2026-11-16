@@ -7,21 +7,21 @@
 
 :root{
     /* Azul de marca */
-    --azul-950:#061b46;
-    --azul-900:#07265f;
-    --azul-800:#083b99;
-    --azul-700:#0b4fc4;
-    --azul-600:#0b5ed7;
-    --azul-500:#0b63f6;
-    --azul-200:#bcd3fb;
-    --azul-100:#e3edff;
-    --azul-50:#f2f7ff;
+    --azul-950:#031B4C;
+    --azul-900:#052B75;
+    --azul-800:#0640AB;
+    --azul-700:#0754D6;
+    --azul-600:#0B63F6;
+    --azul-500:#2D7EFF;
+    --azul-200:#A8C9FF;
+    --azul-100:#D9E9FF;
+    --azul-50:#EFF6FF;
 
     /* Superficies y texto */
-    --fondo:#f1f5fb;
+    --fondo:#EDF3FB;
     --superficie:#ffffff;
-    --borde:#e3e9f3;
-    --borde-fuerte:#cfd9ea;
+    --borde:#DCE7F6;
+    --borde-fuerte:#BFD3F2;
     --texto:#0f1c33;
     --texto-2:#42526e;
     --texto-3:#6b7a94;
@@ -94,7 +94,7 @@ textarea{
     color:#fff;
     background:
         radial-gradient(420px 260px at 0% 0%, rgba(255,255,255,.14), transparent 70%),
-        linear-gradient(180deg,#0f4cdd 0%, var(--azul-600) 48%, var(--azul-800) 100%);
+        linear-gradient(165deg,#0D56E8 0%, #0648C7 48%, #032E8B 100%);
     box-shadow:6px 0 28px rgba(7,38,95,.18);
 }
 

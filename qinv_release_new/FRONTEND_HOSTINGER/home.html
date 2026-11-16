@@ -9,22 +9,32 @@
 
 <title>Quality Inventario</title>
 
-<meta name="theme-color" content="#0b5ed7">
+<meta name="theme-color" content="#0648C7">
 
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/home.css?v=3.1.0">
+<link rel="stylesheet" href="css/tema-quality.css?v=3.1.0">
 
 
 <link rel="stylesheet"
 href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
 
+<link rel="stylesheet" href="css/directorio.css?v=3.1.0">
 </head>
 
 
 <body>
+<script>
+/* Fase 2.7: tema y modo ligero antes del primer pintado (evita el parpadeo y re-estilos posteriores). */
+try{var _p=JSON.parse(localStorage.getItem("qualityPreferencias")||"{}");if(_p.theme==="dark")document.body.classList.add("qi-dark");
+var _l=localStorage.getItem("qiModoLigero");var _c=navigator.connection||{};
+if(_l==="1"||(_l!=="0"&&((navigator.deviceMemory&&navigator.deviceMemory<=4)||(navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=4)||_c.saveData)))document.body.classList.add("qi-lite");}catch(e){}
+</script>
 
 
 <div class="container">
@@ -67,20 +77,31 @@ Inventario
     <span>Productos</span>
 </a>
 
+<a id="menuDirectorioClientes"><i class="fas fa-address-book"></i><span>Directorio de Clientes</span></a>
+
 <a id="menuAlmacen">
     <i class="fas fa-right-left"></i>
     <span>Almacén</span>
 </a>
 
-<a id="menuMovimientos">
-    <i class="fas fa-clock-rotate-left"></i>
-    <span>Movimientos</span>
-</a>
 
-<a id="menuVencimientos">
-    <i class="fas fa-calendar-xmark"></i>
-    <span>Vencimientos</span>
-</a>
+<div class="nav-group" id="grupoReportes">
+    <button type="button" class="nav-group-btn" id="btnCentroReportes" aria-expanded="false" aria-controls="subReportes">
+        <i class="fas fa-chart-column"></i>
+        <span>Centro de reportes</span>
+        <i class="fas fa-chevron-down nav-chevron"></i>
+    </button>
+    <div class="nav-sub" id="subReportes">
+        <a id="menuMovimientos">
+            <i class="fas fa-clock-rotate-left"></i>
+            <span>Movimientos</span>
+        </a>
+        <a id="menuVencimientos">
+            <i class="fas fa-calendar-xmark"></i>
+            <span>Vencimientos</span>
+        </a>
+    </div>
+</div>
 <a id="menuConfiguracion">
     <i class="fas fa-gear"></i>
     <span>Configuración</span>
@@ -165,6 +186,13 @@ Inventario
 
 
 
+
+<section id="seccionDirectorioClientes" class="results" style="display:none;">
+  <div class="qi-directory-toolbar"><input id="qiBuscarCliente" type="search" placeholder="Buscar por código o nombre del cliente"><button id="qiNuevoCliente" type="button">+ Nuevo cliente</button><button id="qiNuevaDireccion" type="button">+ Nueva dirección</button></div>
+  <div id="qiDirectorioLista"></div>
+</section>
+<div id="qiModalDirectorio" class="qi-modal" hidden><div class="qi-modal-card"><button type="button" id="qiCerrarModal" class="qi-modal-close">×</button><h2 id="qiModalTitulo">Cliente</h2><form id="qiFormDirectorio"><div id="qiCamposCliente"><label>Código de cliente<input name="codigo" required></label><label>Nombre / razón social<input name="nombre" required></label><label>Teléfono general<input name="telefono"></label></div><div id="qiCamposDireccion" hidden><label>Cliente<select name="clienteCodigo" id="qiSelectCliente"></select></label><label>Sucursal / referencia<input name="sucursal"></label><label>Dirección completa<textarea name="direccion" required></textarea></label><label>Persona que recibe<input name="recibe"></label><label>Teléfono de contacto<input name="telefonoDireccion"></label></div><button type="submit">Guardar</button></form></div></div>
+<div id="qiOrdenImpresion" class="qi-print-order" hidden></div>
 
 <!-- ==========================
      TARJETAS DASHBOARD
@@ -266,6 +294,11 @@ Inventario
             Salida
         </button>
 
+        <button id="tabSugerenciaPedido" class="almacen-tab" type="button">
+            <i class="fas fa-cart-flatbed"></i>
+            Sugerencia de pedido
+        </button>
+
     </div>
 
 
@@ -301,6 +334,7 @@ Inventario
             <label for="entradaNombre">Nombre del producto</label>
             <input type="text" id="entradaNombre" readonly placeholder="Se completa al seleccionar el SKU">
             <input type="hidden" id="entradaProducto">
+            <div id="entradaProductoPreview" class="almacen-product-preview" style="display:none" aria-live="polite"></div>
         </div>
 
         <div class="campo">
@@ -437,6 +471,23 @@ Inventario
 
     </div>
 
+    <!-- SUGERENCIA DE PEDIDO: pestaña propia dentro de Almacén -->
+    <div id="panelSugerenciaPedido" class="gestion-panel" style="display:none;" aria-label="Sugerencia de pedido">
+        <div class="gestion-barra">
+            <input id="filtroReposicion" type="search" placeholder="Filtrar por código, producto o marca..." aria-label="Filtrar sugerencias de pedido">
+            <div class="gestion-acciones">
+                <button id="btnExportarSugerenciaExcel" class="btn-exportar-excel" type="button" title="Descargar el reporte de pedidos en Excel" aria-label="Descargar reporte de pedidos en Excel"><i class="fas fa-file-excel" aria-hidden="true"></i> Descargar Excel</button>
+                <button id="btnActualizarReposicion" class="btn-actualizar" type="button"><i class="fas fa-rotate"></i> Actualizar</button>
+            </div>
+        </div>
+        <p class="gestion-nota">Los mínimos requeridos se utilizan únicamente para calcular pedidos; no forman parte de las existencias. La sugerencia de traslado nunca supera lo disponible en San Pedro Sula.</p>
+        <div id="resumenReposicion" class="gestion-resumen"></div>
+        <h3 class="gestion-titulo">Reactivos: pedido de Tegucigalpa a San Pedro Sula</h3>
+        <div class="tabla-scroll" id="tablaReposicionReactivos"></div>
+        <h3 class="gestion-titulo">Materiales: necesidad de pedido de Tegucigalpa</h3>
+        <div class="tabla-scroll" id="tablaReposicionMateriales"></div>
+    </div>
+
 </section>
 <!-- ==========================
      MOVIMIENTOS
@@ -548,7 +599,7 @@ id="fechaMovimientos">
 </div>
 </section>
 
-<!-- CONFIGURACIÓN -->
+
 <section id="seccionConfiguracion" class="settings-page" style="display:none;">
   <div class="settings-heading"><i class="fas fa-gear"></i><div><h2>Configuración</h2><p>Consulta tu información de usuario y personaliza tu experiencia en el sistema.</p></div></div>
   <div class="settings-grid">
@@ -859,6 +910,8 @@ Producto
 
 </h2>
 
+<div id="detalleImagenProducto" class="detalle-imagen-producto" style="display:none"></div>
+
 <div class="detalle-info">
 
 
@@ -998,18 +1051,20 @@ LOTES
 <!-- ==========================
      SCRIPTS
 ========================== -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-
-<script src="js/session.js"></script>
-<script src="js/api.js"></script>
-<script src="js/home.js"></script>
-<script src="js/almacen.js"></script>
-<script src="js/movimientos.js"></script>
-<script src="js/vencimientos.js"></script>
-<script src="js/pdf-vencimientos.js"></script>
-<script src="js/ui.js"></script>
+<!-- Chart.js y jsPDF ya no bloquean el arranque: js/libs.js los carga al entrar a Movimientos/Vencimientos -->
+<script src="js/rendimiento.js?v=3.1.0"></script>
+<script src="js/session.js?v=3.1.0"></script>
+<script src="js/api.js?v=3.1.0"></script>
+<script src="js/imagenes.js?v=3.1.0"></script>
+<script src="js/home.js?v=3.1.0"></script>
+<script src="js/almacen.js?v=3.1.0"></script>
+<script src="js/movimientos.js?v=3.1.0"></script>
+<script src="js/vencimientos.js?v=3.1.0"></script>
+<script src="js/pdf-vencimientos.js?v=3.1.0"></script>
+<script src="js/ui.js?v=3.1.0"></script>
+<script src="js/gestion.js?v=3.1.0"></script>
+<script src="js/directorio.js?v=3.1.0"></script>
+<script src="js/libs.js?v=3.1.0"></script>
 
 </body>
 

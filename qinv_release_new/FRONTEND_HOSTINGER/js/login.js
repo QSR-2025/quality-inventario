@@ -119,35 +119,15 @@ form.addEventListener("submit", async (e) => {
 
     try {
 
-        console.log("API:", API_URL);
-        const respuesta = await fetch(
-            `${API_URL}?action=login&usuario=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`
-        );
-
-
-        if (!respuesta.ok) {
-
-            throw new Error(
-                "No fue posible conectar con el servidor."
-            );
-
-        }
-
-
-        const datos = await respuesta.json();
-
-        console.log(datos);
+        const datos = await solicitarLogin(user, pass);
 
         if (datos.error) {
 
-        throw new Error(
-        datos.mensaje || "El servidor rechazó la solicitud."
-        );
+            throw new Error(
+                datos.mensaje || "El servidor rechazó la solicitud."
+            );
 
-}
-
-
-
+        }
 
         finalizarCarga();
 
@@ -223,20 +203,119 @@ form.addEventListener("submit", async (e) => {
 
         finalizarCarga();
 
-
         console.error(error);
 
-
         mostrarMensaje(
-            error.message || "No fue posible conectar con el servidor.",
+            await describirErrorConexion(error),
             "#dc3545"
         );
-
 
     }
 
 
 });
+
+
+
+/*=========================================
+  SOLICITUD DE LOGIN
+  POST con cuerpo text/plain (no genera preflight CORS) para que la
+  contraseña no viaje en la URL. Si el servidor desplegado es una versión
+  anterior que no conoce login por POST, se usa el GET anterior.
+=========================================*/
+
+async function leerJsonServidor(respuesta) {
+
+    if (!respuesta.ok) {
+        const e = new Error("HTTP " + respuesta.status);
+        e.codigoLogin = "HTTP";
+        throw e;
+    }
+
+    const texto = await respuesta.text();
+
+    try {
+        return JSON.parse(texto);
+    } catch (e) {
+        // Apps Script devuelve HTML (no JSON) cuando falta autorizar el script
+        // o cuando hay un error del servidor fuera del código.
+        const err = new Error("El servidor no devolvió JSON.");
+        err.codigoLogin = "NO_JSON";
+        throw err;
+    }
+
+}
+
+async function solicitarLogin(user, pass) {
+
+    const respuesta = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "login", usuario: user, password: pass })
+    });
+
+    const datos = await leerJsonServidor(respuesta);
+
+    // Servidor anterior: responde "Acción no válida." a la acción login.
+    if (datos && datos.success === false && /acci[oó]n no v[aá]lida/i.test(String(datos.message || ""))) {
+
+        const r2 = await fetch(
+            `${API_URL}?action=login&usuario=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`
+        );
+
+        return leerJsonServidor(r2);
+
+    }
+
+    return datos;
+
+}
+
+/*=========================================
+  DIAGNÓSTICO DE ERRORES DE CONEXIÓN
+=========================================*/
+
+async function describirErrorConexion(error) {
+
+    if (error && error.codigoLogin === "NO_JSON") {
+        return "El servidor respondió, pero no con datos válidos. En Apps Script, abra el " +
+               "editor, ejecute cualquier función una vez para autorizar permisos y cree una " +
+               "nueva versión de la implementación.";
+    }
+
+    if (error && error.codigoLogin === "HTTP") {
+        return "El servidor respondió con un error (" + error.message + "). Revise la implementación de Apps Script.";
+    }
+
+    // "Failed to fetch" / "Load failed" / "NetworkError": el navegador no pudo
+    // leer la respuesta. Se prueba el servidor con una acción mínima (ping).
+    if (error && error.name === "TypeError") {
+
+        if (navigator.onLine === false) {
+            return "Sin conexión a Internet. Verifique la red e intente de nuevo.";
+        }
+
+        try {
+
+            const r = await fetch(`${API_URL}?action=ping`, { cache: "no-store" });
+            const d = await r.json();
+
+            if (d && d.ok) {
+                return "El servidor responde (versión " + d.version + "), pero la solicitud de " +
+                       "inicio de sesión falló. Recargue con Ctrl+F5 e intente de nuevo.";
+            }
+
+        } catch (e2) { /* se explica abajo */ }
+
+        return "No se pudo contactar el servidor de Apps Script. Causas probables: la " +
+               "implementación no está publicada con acceso \"Cualquier persona\", falta autorizar " +
+               "el script, o la URL de implementación ya no existe. Abra " +
+               "<b>" + API_URL + "?action=ping</b> en el navegador: debe mostrar {\"ok\":true...}.";
+
+    }
+
+    return (error && error.message) || "No fue posible conectar con el servidor.";
+
+}
 
 
 
@@ -325,7 +404,8 @@ function mostrarMensaje(texto,color){
     mensaje.style.color = "#ffffff";
 
 
-    mensaje.innerHTML = texto;
+    // Los textos son fijos del frontend; los del servidor se muestran como texto.
+    if (/<b>/.test(texto)) { mensaje.innerHTML = texto; } else { mensaje.textContent = texto; }
 
 
 }
