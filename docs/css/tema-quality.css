@@ -620,3 +620,58 @@ body.qi-dark #subReportes,body.qi-dark #subReportes:not([hidden]) { background:#
 @media(max-width:640px) {
   .cards .card { border-radius:15px; }
 }
+
+/* FIX MÓVIL — tarjetas de producto sin superposición de imagen y texto */
+@media (max-width: 640px) {
+  #productList .product-card-product {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto;
+    align-items: start !important;
+    gap: 12px !important;
+    padding: 14px !important;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  #productList .product-card-product > .product-thumb {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+    width: min(100%, 180px) !important;
+    height: 132px !important;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  #productList .product-card-product > .product-info {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  #productList .product-card-product > .product-info h3 {
+    display: block !important;
+    width: 100%;
+    margin: 0 0 8px;
+    font-size: clamp(15px, 4.2vw, 18px) !important;
+    line-height: 1.35 !important;
+    letter-spacing: -.01em;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+  #productList .product-card-product > .product-info p {
+    margin: 4px 0 0;
+    font-size: 13px !important;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+  #productList .product-card-product > .btn-detail {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: stretch !important;
+    width: 100% !important;
+    min-width: 0;
+    margin: 2px 0 0;
+  }
+}
