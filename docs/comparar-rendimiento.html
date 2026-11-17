@@ -1,0 +1,19 @@
+<!DOCTYPE html><html lang="es"><meta charset="utf-8"><title>Comparar rendimiento — Quality Inventario</title>
+<style>body{font:14px system-ui;margin:24px;max-width:900px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #cbd5e1;padding:6px 8px;text-align:right}td:first-child,th:first-child{text-align:left}.m{color:#16713d}.p{color:#b42318}</style>
+<h2>Comparar dos mediciones (antes / después)</h2>
+<p>Exporte cada medición desde el panel (<code>?perf=1</code> → Exportar). Cargue varios archivos "antes" y varios "después" (mínimo 3 de cada uno); se compara la <b>mediana</b>.</p>
+<p>Antes: <input type="file" id="a" multiple accept=".json"> Después: <input type="file" id="d" multiple accept=".json"> <button id="go">Comparar</button></p><div id="o"></div>
+<script>
+const leer=async i=>Promise.all([...i.files].map(f=>f.text().then(JSON.parse)));
+const med=a=>{a=a.filter(x=>x!=null).sort((x,y)=>x-y);return a.length?a[Math.floor((a.length-1)/2)]:null};
+function metricas(r){const o={};
+ (r.metricas||[]).forEach(m=>{if(m.tipo==="duracion")o["⏱ "+m.nombre]=m.ms;else if(/^apertura:/.test(m.nombre))o["⏱ "+m.nombre]=m.ms});
+ Object.entries(r.imagenes||{}).forEach(([k,g])=>{o["img "+k+" p50"]=g.p50;o["img "+k+" p95"]=g.p95;o["img "+k+" última"]=g.ultimaMs;o["img "+k+" fallidas"]=g.fallidas});
+ o["solicitudes a Apps Script"]=r.peticiones&&r.peticiones.total;o["LCP"]=r.lcp;o["tareas largas (ms)"]=r.tareasLargas&&r.tareasLargas.msTotales;o["DOMContentLoaded"]=r.navegacion&&r.navegacion.domContentLoaded;return o}
+document.getElementById("go").onclick=async()=>{const A=(await leer(a)).map(metricas),D=(await leer(d)).map(metricas);
+ const claves=[...new Set([...A,...D].flatMap(Object.keys))].sort();
+ let h="<table><tr><th>Métrica</th><th>Antes (mediana de "+A.length+")</th><th>Después (mediana de "+D.length+")</th><th>Cambio</th></tr>";
+ claves.forEach(k=>{const x=med(A.map(o=>o[k])),y=med(D.map(o=>o[k]));let c="—",cl="";if(x!=null&&y!=null&&x!==0){const p=Math.round((y-x)/x*100);c=(p>0?"+":"")+p+" %";cl=p<0?"m":p>0?"p":""}
+  h+=`<tr><td>${k}</td><td>${x??"—"}</td><td>${y??"—"}</td><td class="${cl}">${c}</td></tr>`});
+ o.innerHTML=h+"</table><p>Con menos de 3 muestras por lado, la diferencia puede ser ruido.</p>"};
+</script></html>

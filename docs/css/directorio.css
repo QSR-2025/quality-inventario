@@ -1,0 +1,48 @@
+.qi-directory-toolbar{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap}.qi-directory-toolbar input{flex:1;min-width:220px;padding:12px;border:1px solid #d7e0ec;border-radius:9px}.qi-directory-toolbar button,.qi-client-card button,.qi-modal-card button{border:0;border-radius:8px;background:#0b4fc4;color:white;padding:10px 14px;cursor:pointer}.qi-client-card{background:#fff;border:1px solid #dce4ef;border-radius:12px;padding:18px;margin:12px 0}.qi-client-card>header,.qi-address{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.qi-client-card small{display:block;color:#66758c;margin-top:5px}.qi-address{border-top:1px solid #e4eaf2;padding:14px 0}.qi-address p{margin:6px 0}.qi-address-actions{display:flex;gap:7px;flex-wrap:wrap}.qi-address-actions button:last-child{background:#a8323e}.qi-empty{color:#718096;padding:12px}.qi-modal[hidden],.qi-print-order[hidden]{display:none}.qi-modal{position:fixed;inset:0;background:#101b2c88;z-index:99999;display:grid;place-items:center;padding:20px}.qi-modal-card{position:relative;background:#fff;border-radius:14px;padding:25px;width:min(560px,100%);max-height:90vh;overflow:auto}.qi-modal-card label{display:block;margin:12px 0;color:#25344b;font-weight:600}.qi-modal-card input,.qi-modal-card textarea,.qi-modal-card select{display:block;width:100%;padding:10px;border:1px solid #ccd6e4;border-radius:7px;margin-top:5px}.qi-modal-card textarea{min-height:85px}.qi-modal-close{position:absolute;right:14px;top:12px;font-size:22px}.qi-order-sheet{background:#fff;color:#17243a;padding:7mm;font:10.5pt Arial,sans-serif;width:100%;box-sizing:border-box}
+.qi-order-head{display:flex;gap:18px;border-bottom:2px solid #173b70;padding-bottom:8px;align-items:center}
+.qi-order-head img{width:105px;height:78px;object-fit:contain}
+.qi-order-head h1{font-size:15pt;color:#092d62;margin:0 0 5px}
+.qi-order-head p{font-size:8.5pt;margin:3px 0}
+.qi-order-sheet h2{text-align:center;font-size:16pt;margin:9px}
+.qi-order-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.qi-order-grid label,.qi-order-bottom label{border:1px solid #9eacc0;padding:7px;min-height:38px}
+.qi-order-grid strong,.qi-order-bottom strong{display:block;margin-top:4px}
+.qi-order-grid .wide{grid-column:1/-1}
+.qi-order-checks{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 2px}
+.qi-order-checks label{display:flex;align-items:center;gap:9px;font-size:12pt;font-weight:600;white-space:nowrap}
+.qi-order-checks input{appearance:auto!important;width:23px!important;height:23px!important;min-width:23px;accent-color:#2458c7;margin:0}
+.qi-order-bottom{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:10px}
+.qi-observations{height:70px}
+@media print{
+ @page{size:letter landscape;margin:7mm}
+ html,body{width:100%;height:100%;margin:0!important;padding:0!important}
+ body *{visibility:hidden!important}
+ #qiOrdenImpresion,#qiOrdenImpresion *{visibility:visible!important}
+ #qiOrdenImpresion{display:block!important;position:fixed!important;left:0!important;top:0!important;width:100%!important;margin:0!important;padding:0!important}
+ .qi-order-sheet{width:100%!important;min-height:0!important;padding:0!important;margin:0!important;box-shadow:none!important;page-break-inside:avoid;break-inside:avoid}
+ .qi-order-head img{width:100px;height:72px}
+ .qi-order-checks input{width:24px!important;height:24px!important;min-width:24px}
+}
+
+/* Ajustes solicitados: logo, cantidad y leyenda de cortesía en orden */
+.qi-order-head img{width:155px;height:105px;object-fit:contain;flex:0 0 155px}
+.qi-order-grid .qi-thanks{grid-column:1/-1;border:0!important;min-height:0!important;padding:2px 0!important;text-align:center;font-size:9.5pt;font-weight:600;color:#173b70}
+.qi-order-grid .qi-quantity strong{min-height:17px;border-bottom:1px solid #9eacc0}
+.qi-order-bottom .qi-blank-name{min-height:20px;border-bottom:1px solid #9eacc0}
+@media print{
+ .qi-order-head img{width:155px!important;height:105px!important;flex:0 0 155px}
+}
+
+/* ===== Vista exclusiva del Directorio de Clientes =====
+   La clase la pone/quita js/directorio.js en <body>. Al usar !important en la hoja de estilos,
+   ningún display inline escrito por otros scripts (home.js, auto-actualización, etc.) puede
+   volver a mostrar las tarjetas o secciones del inventario mientras el Directorio está activo. */
+body.qi-vista-directorio #dashboardCards,
+body.qi-vista-directorio #seccionResultados,
+body.qi-vista-directorio #seccionAlmacen,
+body.qi-vista-directorio #seccionMovimientos,
+body.qi-vista-directorio #seccionVencimientos,
+body.qi-vista-directorio #seccionConfiguracion,
+body.qi-vista-directorio header .search{display:none!important}
+body.qi-vista-directorio #seccionDirectorioClientes{display:block!important}
+body:not(.qi-vista-directorio) #seccionDirectorioClientes{display:none!important}
