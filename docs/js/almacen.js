@@ -885,12 +885,8 @@ function resolverNombreProducto(producto) {
 }
 function obtenerImagenProductoAlmacen(producto) {
     if (!producto) return { url: '', fuente: null };
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/almacen.js
     const conRef = f => (f && window.QI_IMG) ? QI_IMG.conReferencia(f, producto.sku || producto.codigo) : (f || null);
     if (producto.imagen || producto.imagenFuente) return { url: String(producto.imagen || ''), fuente: conRef(producto.imagenFuente) };
-=======
-    if (producto.imagen || producto.imagenFuente) return { url: String(producto.imagen || ''), fuente: producto.imagenFuente || null };
->>>>>>> origin/main:js/almacen.js
     const refs = [
         [producto.foto1 || producto.ref1 || producto.referencia1, producto.foto1Tipo, producto.foto1Fuente],
         [producto.foto2 || producto.ref2 || producto.referencia2, producto.foto2Tipo, producto.foto2Fuente]
@@ -901,11 +897,7 @@ function obtenerImagenProductoAlmacen(producto) {
         if (String(tipo || '').toLowerCase() === 'imagen' || !!fuente ||
             /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url) ||
             /drive\.google\.com\/(?:file\/d|thumbnail|uc|open)/i.test(url) ||
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/almacen.js
             /googleusercontent\.com/i.test(url)) return { url, fuente: conRef(fuente) };
-=======
-            /googleusercontent\.com/i.test(url)) return { url, fuente: fuente || null };
->>>>>>> origin/main:js/almacen.js
     }
     return { url: '', fuente: null };
 }
@@ -921,11 +913,7 @@ function mostrarPreviewProductoAlmacen(tipo, producto) {
     img.alt = 'Imagen de ' + resolverNombreProducto(producto);
     img.loading = 'eager'; img.decoding = 'async';
     if (typeof cargarImagenConRespaldoQI === 'function') {
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/almacen.js
         cargarImagenConRespaldoQI(img, imagen.url, () => { cont.style.display = 'none'; cont.replaceChildren(); }, imagen.fuente, { prioridad: 'alta' });
-=======
-        cargarImagenConRespaldoQI(img, imagen.url, () => { cont.style.display = 'none'; cont.replaceChildren(); }, imagen.fuente);
->>>>>>> origin/main:js/almacen.js
     } else {
         img.src = imagen.url;
         img.onerror = () => { cont.style.display = 'none'; cont.replaceChildren(); };

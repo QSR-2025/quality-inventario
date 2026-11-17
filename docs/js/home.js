@@ -28,12 +28,8 @@ let rutaActual = {
 let indiceMarcas = new Map();
 let indiceCategorias = new Map();
 let indiceLogosMarcas = new Map();
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
 let firmaInventarioQI = "";          // huella de la última respuesta aplicada (evita redibujar si no cambió)
 let ultimoAvisoImagenQI = 0;
-=======
-const cacheImagenesDriveQI = new Map();
->>>>>>> origin/main:js/home.js
 // ==========================================================
 // RENDERIZADO PROGRESIVO DE PRODUCTOS
 // Evita crear cientos de tarjetas al mismo tiempo
@@ -304,27 +300,11 @@ async function cargarInicio() {
 
     try {
 
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
         // Los logotipos ya NO bloquean la primera pantalla: se piden en paralelo
         // y se colocan en las tarjetas cuando llegan (o al instante si hay caché).
         cargarLogosMarcasQI(false);
 
         const datos = await obtenerInicio();
-=======
-        const [datos, datosMarcas] = await Promise.all([
-            obtenerInicio(),
-            (typeof obtenerMarcas === "function" ? obtenerMarcas().catch(error => {
-                console.warn("No se pudieron cargar los logotipos de marcas:", error);
-                return { marcas: [] };
-            }) : Promise.resolve({ marcas: [] }))
-        ]);
-
-        indiceLogosMarcas.clear();
-        (Array.isArray(datosMarcas?.marcas) ? datosMarcas.marcas : []).forEach(item => {
-            const clave = normalizarMarcaQI(item?.nombre);
-            if (clave && item?.imagen) indiceLogosMarcas.set(clave, { url: String(item.imagen), fuente: item.imagenFuente || null });
-        });
->>>>>>> origin/main:js/home.js
 
         if (window.QIPerf) QIPerf.marca("apertura:datos-recibidos");
 
@@ -964,7 +944,6 @@ function configurarCentroReportesQI() {
     const submenu = document.getElementById("subReportes");
     if (!boton || !grupo || !submenu || boton.dataset.qiReportBound === "1") return;
     boton.dataset.qiReportBound = "1";
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
 
     // Se mueve al body para escapar del overflow-y:auto del sidebar.
     if (submenu.parentElement !== document.body) document.body.appendChild(submenu);
@@ -1009,21 +988,6 @@ function configurarCentroReportesQI() {
     window.addEventListener("scroll", () => { if (!submenu.hidden) posicionar(); }, true);
 }
 
-=======
-    const abiertoInicial = grupo.classList.contains("open");
-    submenu.hidden = !abiertoInicial;
-    submenu.style.display = abiertoInicial ? "flex" : "none";
-    boton.setAttribute("aria-expanded", abiertoInicial ? "true" : "false");
-    boton.addEventListener("click", (evento) => {
-        evento.preventDefault();
-        const abierto = boton.getAttribute("aria-expanded") !== "true";
-        grupo.classList.toggle("open", abierto);
-        submenu.hidden = !abierto;
-        submenu.style.display = abierto ? "flex" : "none";
-        boton.setAttribute("aria-expanded", abierto ? "true" : "false");
-    });
-}
->>>>>>> origin/main:js/home.js
 document.addEventListener("DOMContentLoaded", configurarCentroReportesQI);
 
 // ========================================
@@ -1115,7 +1079,6 @@ function normalizarMarcaQI(valor) {
         .replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
 // Las funciones extraerIdDriveQI, obtenerImagenDriveQI, esUrlProxyableQI y
 // cargarImagenConRespaldoQI ahora viven en js/imagenes.js (misma firma).
 
@@ -1183,153 +1146,12 @@ function tipoImagenProductoQI(producto) {
     if (tipo === "repuesto") return "repuestos";
     if (tipo === "material") return "materiales";
     return "reactivos";
-=======
-function extraerIdDriveQI(url) {
-    const texto = String(url || "");
-    const m = texto.match(/(?:\/file\/d\/|\/d\/|[?&]id=)([A-Za-z0-9_-]{10,})/);
-    return m ? m[1] : "";
-}
-
-async function obtenerImagenDriveQI(url, fuenteCelda = null) {
-    const original = String(url || "").trim();
-    const id = extraerIdDriveQI(original);
-    if (!original && !fuenteCelda) return "";
-    const clave = fuenteCelda ? JSON.stringify(fuenteCelda) : (id || original);
-    const cacheado = cacheImagenesDriveQI.get(clave);
-    if (cacheado && Date.now() - cacheado.timestamp < cacheado.ttl) return cacheado.src;
-    const token = String(localStorage.getItem("qualityToken") || "").trim();
-    if (!token) return "";
-    try {
-        const resp = await fetch(API_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "getImagenDrive", token, fileId: id, url: original, fuente: fuenteCelda })
-        });
-        const data = await resp.json();
-        if (!resp.ok || !data?.success) {
-            console.warn("No se pudo recuperar la imagen desde el servidor:", data?.message || ("HTTP " + resp.status));
-            return "";
-        }
-        const src = String(data.dataUrl || data.imageUrl || "");
-        if (src) {
-            // Las content URLs de Google son temporales; no conservarlas tanto
-            // como los data URLs que ya contienen la imagen.
-            const ttl = (data.temporal || /googleusercontent\.com/i.test(src)) ? 30 * 1000 : 5 * 60 * 1000;
-            cacheImagenesDriveQI.set(clave, { timestamp: Date.now(), src, ttl });
-        }
-        return src;
-    } catch (error) {
-        console.warn("No se pudo recuperar la imagen protegida de Drive/Sheets:", error);
-        return "";
-    }
-}
-
-function esUrlProxyableQI(url) {
-    try {
-        const u = new URL(String(url || ""));
-        const host = u.hostname.toLowerCase();
-        return (host === "qualityhn.com" || host === "www.qualityhn.com") && u.pathname.toLowerCase().startsWith("/wp-content/uploads/");
-    } catch (e) { return false; }
-}
-
-function cargarImagenConRespaldoQI(img, url, alFallar, fuenteCelda = null) {
-    if (!img || (!url && !fuenteCelda)) { if (alFallar) alFallar(); return; }
-    const original = String(url || "").trim();
-    const instancia = (Number(img.dataset.qiInstancia || 0) + 1);
-    img.dataset.qiInstancia = String(instancia);
-    let finalizada = false;
-    let proxyIntentado = false;
-    const fallar = () => { if (finalizada) return; finalizada = true; if (alFallar) alFallar(); };
-    const asignar = (src) => {
-        if (img.dataset.qiInstancia !== String(instancia) || !src) return;
-        img.onerror = () => intentarProxy();
-        img.src = src;
-    };
-    const intentarProxy = () => {
-        if (proxyIntentado) { fallar(); return; }
-        // Resolver mediante Apps Script solo si es una imagen insertada en celda,
-        // o si una URL pública de Quality no pudo cargarse directamente.
-        if (!fuenteCelda && !esUrlProxyableQI(original)) { fallar(); return; }
-        proxyIntentado = true;
-        img.dataset.qiProxyIntentado = "1";
-        obtenerImagenDriveQI(original, fuenteCelda).then(src => {
-            if (img.dataset.qiInstancia !== String(instancia)) return;
-            if (src) asignar(src); else fallar();
-        }).catch(fallar);
-    };
-
-    img.dataset.qiUrlOriginal = original;
-    img.dataset.qiProxyIntentado = "0";
-    img.referrerPolicy = "strict-origin-when-cross-origin";
-
-    // CellImage: no usar el content URL guardado en caché. Solicitar al backend
-    // una URL fresca de la celda, o el blob convertido a data URL.
-    const urlGoogleTemporal = /googleusercontent\.com/i.test(original);
-    if (fuenteCelda && (!original || urlGoogleTemporal)) {
-        proxyIntentado = true;
-        img.dataset.qiProxyIntentado = "1";
-        obtenerImagenDriveQI(original, fuenteCelda).then(src => {
-            if (img.dataset.qiInstancia !== String(instancia)) return;
-            if (src) asignar(src);
-            else if (original) asignar(original);
-            else fallar();
-        }).catch(() => { if (original) asignar(original); else fallar(); });
-    } else if (original) {
-        img.onerror = () => intentarProxy();
-        img.src = original;
-    } else {
-        intentarProxy();
-    }
-}
-
-function crearLogoMarcaQI(marca, clase = "brand-logo") {
-    const caja = document.createElement("div");
-    caja.className = clase;
-    const logo = indiceLogosMarcas.get(normalizarMarcaQI(marca));
-    const url = logo && logo.url ? logo.url : "";
-    if (url) {
-        const img = document.createElement("img");
-        img.alt = "Logotipo " + marca;
-        img.loading = "lazy";
-        cargarImagenConRespaldoQI(img, url, () => {
-            img.remove();
-            const icono = document.createElement("i");
-            icono.className = "fas fa-tag";
-            icono.setAttribute("aria-hidden", "true");
-            caja.appendChild(icono);
-        }, logo.fuente || null);
-        caja.appendChild(img);
-    } else {
-        const icono = document.createElement("i");
-        icono.className = "fas fa-tag";
-        icono.setAttribute("aria-hidden", "true");
-        caja.appendChild(icono);
-    }
-    return caja;
->>>>>>> origin/main:js/home.js
 }
 
 function obtenerDatosImagenPrincipalQI(producto) {
     if (!producto) return { url: "", fuente: null };
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
     const fuente = producto.imagenFuente && window.QI_IMG ? QI_IMG.conReferencia(producto.imagenFuente, producto.sku || producto.codigo) : (producto.imagenFuente || null);
     return { url: String(producto.imagen || "").trim(), fuente };
-=======
-    if (producto.imagen || producto.imagenFuente) return { url: String(producto.imagen || ""), fuente: producto.imagenFuente || null };
-    const refs = [
-        [producto.foto1 || producto.ref1 || producto.referencia1, producto.foto1Tipo, producto.foto1Fuente],
-        [producto.foto2 || producto.ref2 || producto.referencia2, producto.foto2Tipo, producto.foto2Fuente]
-    ];
-    for (const [valor, clase, fuente] of refs) {
-        const ref = String(valor || "").trim();
-        const tipoRef = String(clase || "").toLowerCase();
-        if ((ref || fuente) && (tipoRef === "imagen" || !!fuente || esUrlDeImagen(ref) ||
-            /drive\.google\.com\/(?:file\/d|thumbnail|uc|open)/i.test(ref) ||
-            /googleusercontent\.com/i.test(ref))) {
-            return { url: ref, fuente: fuente || null };
-        }
-    }
-    return { url: "", fuente: null };
->>>>>>> origin/main:js/home.js
 }
 
 function obtenerImagenPrincipalQI(producto) {
@@ -1350,11 +1172,7 @@ function abrirVisorReferenciaQI(src, titulo, fuenteCelda = null) {
     }
     const img = visor.querySelector("img");
     img.alt = titulo || "Referencia";
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
     cargarImagenConRespaldoQI(img, src, () => { img.alt = "No se pudo cargar la imagen"; }, fuenteCelda, { prioridad: "alta" });
-=======
-    cargarImagenConRespaldoQI(img, src, () => { img.alt = "No se pudo cargar la imagen"; }, fuenteCelda);
->>>>>>> origin/main:js/home.js
     visor.querySelector("p").textContent = titulo || "Referencia";
     visor.classList.add("open");
 }
@@ -1369,7 +1187,6 @@ function mostrarMarcas() {
     mostrarDashboardCards(true);
     const contenedor = document.getElementById("productList");
     if (!contenedor) return;
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
     if (window.QI_IMG) QI_IMG.liberar(contenedor);
     renderVersion++;                      // cancela cualquier lista de productos en curso
     if (observadorMasProductos) { observadorMasProductos.disconnect(); observadorMasProductos = null; }
@@ -1381,16 +1198,6 @@ function mostrarMarcas() {
         const div = document.createElement("div");
         div.className = "product-card catalog-card brand-card";
         div.appendChild(crearLogoMarcaQI(marca, "brand-logo", indiceMarca));
-=======
-    contenedor.innerHTML = "";
-    const marcas = Array.from(indiceMarcas.keys()).filter(Boolean).sort();
-    const fragment = document.createDocumentFragment();
-    marcas.forEach(marca => {
-        const cantidad = indiceMarcas.get(marca)?.length || 0;
-        const div = document.createElement("div");
-        div.className = "product-card catalog-card brand-card";
-        div.appendChild(crearLogoMarcaQI(marca));
->>>>>>> origin/main:js/home.js
         const info = document.createElement("div");
         info.className = "product-info";
         const h3 = document.createElement("h3"); h3.textContent = marca;
@@ -1407,10 +1214,7 @@ function mostrarMarcas() {
     });
     contenedor.appendChild(fragment);
     actualizarBreadcrumb();
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
     medirImagenesVisiblesQI("marcas:logos-visibles", "#productList .brand-logo img");
-=======
->>>>>>> origin/main:js/home.js
 }
 function mostrarCategorias(marca) {
 
@@ -1461,11 +1265,7 @@ function mostrarCategorias(marca) {
         div.className = "product-card";
 
         div.className = "product-card catalog-card category-card";
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
         div.appendChild(crearLogoMarcaQI(marca, "brand-logo category-logo", indiceCategoria));
-=======
-        div.appendChild(crearLogoMarcaQI(marca, "brand-logo category-logo"));
->>>>>>> origin/main:js/home.js
         const infoCategoria = document.createElement("div");
         infoCategoria.className = "product-info";
         const tituloCategoria = document.createElement("h3"); tituloCategoria.textContent = categoria;
@@ -1578,11 +1378,7 @@ function crearCarpeta(titulo, texto, accion) {
 // ========================================
 
 
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
 function renderProductCard(producto, contenedor, indice = 99) {
-=======
-function renderProductCard(producto, contenedor) {
->>>>>>> origin/main:js/home.js
     const div = document.createElement("article");
     div.className = "product-card product-card-product";
     const datosImagen = obtenerDatosImagenPrincipalQI(producto);
@@ -1592,23 +1388,15 @@ function renderProductCard(producto, contenedor) {
     if (urlImagen || datosImagen.fuente) {
         const img = document.createElement("img");
         img.alt = producto.nombre || "Imagen del producto";
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
         // Las primeras tarjetas (primera pantalla) se piden con prioridad; el resto, al acercarse.
         img.loading = indice < 6 ? "eager" : "lazy";
-=======
-        img.loading = "lazy";
->>>>>>> origin/main:js/home.js
         img.decoding = "async";
         cargarImagenConRespaldoQI(img, urlImagen, () => {
             marco.classList.add("sin-imagen");
             marco.replaceChildren();
             const icono = document.createElement("i"); icono.className = "fas fa-box-open";
             marco.appendChild(icono);
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
         }, datosImagen.fuente, { tipo: tipoImagenProductoQI(producto), prioridad: indice < 6 ? "alta" : "normal" });
-=======
-        }, datosImagen.fuente);
->>>>>>> origin/main:js/home.js
         marco.appendChild(img);
     } else {
         marco.classList.add("sin-imagen");
@@ -2074,14 +1862,10 @@ function crearBloqueReferencia(titulo, valor, tipo, fuenteCelda = null) {
         boton.setAttribute("aria-label", "Ampliar " + titulo);
         const img = document.createElement("img");
         img.src = ""; img.alt = titulo; img.loading = "lazy"; img.decoding = "async";
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
         if (/^https?:\/\//i.test(contenido) && !fuenteCelda) {
             img.src = contenido;
             img.onerror = () => { boton.classList.add("referencia-sin-imagen"); img.remove(); const aviso=document.createElement("span"); aviso.textContent="No se pudo cargar la imagen"; boton.appendChild(aviso); };
         } else cargarImagenConRespaldoQI(img, contenido, () => {
-=======
-        cargarImagenConRespaldoQI(img, contenido, () => {
->>>>>>> origin/main:js/home.js
             if (/^https?:\/\//i.test(contenido) && clase !== "imagen") {
                 const a = document.createElement("a");
                 a.href = contenido; a.target = "_blank"; a.rel = "noopener noreferrer";
@@ -2093,11 +1877,7 @@ function crearBloqueReferencia(titulo, valor, tipo, fuenteCelda = null) {
                 const aviso = document.createElement("span"); aviso.textContent = "No se pudo cargar la imagen";
                 boton.appendChild(aviso);
             }
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
         }, fuenteCelda, { prioridad: "alta" });
-=======
-        }, fuenteCelda);
->>>>>>> origin/main:js/home.js
         boton.appendChild(img);
         boton.addEventListener("click", () => abrirVisorReferenciaQI(img.src || contenido, titulo, fuenteCelda));
         bloque.appendChild(boton);
@@ -2156,7 +1936,6 @@ function verDetalleProducto(producto) {
         imgDetalle.alt = "Imagen de " + (producto.nombre || "producto");
         imgDetalle.loading = "eager";
         imgDetalle.decoding = "async";
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
         if (window.QIPerf) {
             QIPerf.inicio("ficha:imagen");
             imgDetalle.addEventListener("load", () => QIPerf.cerrar("ficha:imagen"), { once: true });
@@ -2165,12 +1944,6 @@ function verDetalleProducto(producto) {
             cajaImagenProducto.style.display = "none";
             cajaImagenProducto.replaceChildren();
         }, datosImagenDetalle.fuente, { prioridad: "alta", tipo: tipoImagenProductoQI(producto) });
-=======
-        cargarImagenConRespaldoQI(imgDetalle, imagenDetalle, () => {
-            cajaImagenProducto.style.display = "none";
-            cajaImagenProducto.replaceChildren();
-        }, datosImagenDetalle.fuente);
->>>>>>> origin/main:js/home.js
         cajaImagenProducto.appendChild(imgDetalle);
         cajaImagenProducto.style.display = "flex";
         imgDetalle.addEventListener("click", () => abrirVisorReferenciaQI(imgDetalle.src || imagenDetalle, producto.nombre || "Producto", datosImagenDetalle.fuente));
@@ -2235,16 +2008,10 @@ function verDetalleProducto(producto) {
     referencias.innerHTML = "";
     let hayReferencias = false;
     if (esMaterial) {
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/home.js
         // Referencia 1 ya se utiliza como imagen principal del material.
         // En el bloque inferior solo se muestra Referencia 2 para evitar duplicarla.
         [["Referencia 2", producto.foto2 ?? producto.ref2 ?? producto.referencia2, producto.foto2Tipo, producto.foto2Fuente]].forEach(([titulo, valor, tipo, fuente]) => {
             const bloque = crearBloqueReferencia(titulo, valor, tipo, (fuente && window.QI_IMG) ? QI_IMG.conReferencia(fuente, producto.sku || producto.codigo) : fuente);
-=======
-        [["Referencia 1", producto.foto1 ?? producto.ref1 ?? producto.referencia1, producto.foto1Tipo, producto.foto1Fuente],
-         ["Referencia 2", producto.foto2 ?? producto.ref2 ?? producto.referencia2, producto.foto2Tipo, producto.foto2Fuente]].forEach(([titulo, valor, tipo, fuente]) => {
-            const bloque = crearBloqueReferencia(titulo, valor, tipo, fuente);
->>>>>>> origin/main:js/home.js
             if (bloque) { referencias.appendChild(bloque); hayReferencias = true; }
         });
     }

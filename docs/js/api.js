@@ -4,11 +4,7 @@
    Optimizada para reducir consultas y mejorar velocidad
 ========================================================== */
 
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/api.js
-const API_URL = "https://script.google.com/macros/s/AKfycbxKXqZPfE4t7Rb9wOTpgxI2odty-RkCtcQlQyT98dbqzgKqq10nxzx0zh-WLX7JyOdP/exec";
-=======
-const API_URL = "https://script.google.com/macros/s/AKfycbxc_YbJ4etseA960gEFZPweo6ipVIjrYHOwRzCDKdl6ZkHOXXgt9HNvWdx56RNJVrrF/exec";
->>>>>>> origin/main:js/api.js
+const API_URL = "https://script.google.com/macros/s/AKDcJHrrHSgvFpsYxqb6g97uaQTd2kE31rPUeDZTeDsjVq-0U8QSSTKALOO_iZ0qopyNbdiJ/exec";
 
 /* ==========================================================
    CONFIGURACIÓN DE CACHÉ
@@ -436,7 +432,6 @@ async function registrarMovimientosLote(comunes, items) {
 /* ==========================================================
    LOGOTIPOS DE MARCAS (pestaña Marcas de Tegucigalpa)
 ========================================================== */
-<<<<<<< HEAD:qinv_release_new/FRONTEND_HOSTINGER/js/api.js
 /*
    Lista de marcas y logotipos: dato que casi no cambia. Se guarda en
    localStorage (sin existencias ni URLs temporales: solo nombre, URL pública
@@ -486,9 +481,4 @@ async function obtenerMarcas(forzar = false) {
     }
 
     return await pedirMarcasServidorQI(forzar);
-=======
-async function obtenerMarcas(forzar = false) {
-    const url = `${API_URL}?action=getMarcas`;
-    return await apiFetch(url, "marcas", 300000, forzar);
->>>>>>> origin/main:js/api.js
 }
